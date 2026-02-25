@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LAN Share</title>
+  <style>
+    body{font-family:system-ui;margin:20px;max-width:900px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .box{border:2px dashed #aaa;padding:18px;border-radius:12px}
+    button{padding:10px 14px;border-radius:10px;border:1px solid #ddd;background:#f7f7f7;cursor:pointer}
+    input{padding:10px;border-radius:10px;border:1px solid #ddd}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;vertical-align:middle}
+    small{color:#666}
+  
+    .filecell{display:flex;align-items:center;gap:10px;min-width:260px}
+    .ficon{
+      width:34px;height:34px;border-radius:10px;
+      display:inline-flex;align-items:center;justify-content:center;
+      background:#f1f5f9;border:1px solid #e5e7eb;
+      font-size:18px;flex:0 0 auto;
+    }
+    .fname{font-weight:600;line-height:1.2;word-break:break-word}
+    .fext{display:inline-block;margin-top:4px;font-size:12px;color:#666;background:#f7f7f7;border:1px solid #eee;padding:2px 8px;border-radius:999px}
+  </style>
+</head>
+<body>
+  <h2>LAN Share <small>– chia sẻ file nội bộ</small></h2>
+
+  <div class="row">
+    <label>PIN (nếu có):</label>
+    <input id="pin" placeholder="vd 1234" />
+    <button onclick="refresh()">Tải danh sách</button>
+  </div>
+
+  <div class="box" id="drop">
+    <b>Kéo thả file vào đây</b> hoặc
+    <input id="picker" type="file" multiple />
+    <div style="margin-top:10px">
+      <button onclick="upload()">Upload</button>
+      <span id="status"></span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>File</th><th>Kích thước</th><th>Hành động</th></tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+
+<script>
+  const $ = (id)=>document.getElementById(id);
+  const status = (t)=>$("status").textContent=t;
+
+  function headers() {
+    const pin = $("pin").value.trim();
+    return pin ? {"X-PIN": pin} : {};
+  }
+
+  function fmt(bytes){
+    const u=["B","KB","MB","GB","TB"]; let i=0,n=bytes;
+    while(n>=1024 && i<u.length-1){n/=1024;i++}
+    return `${n.toFixed(n>=10||i===0?0:1)} ${u[i]}`;
+  }
+
+
+  function fileIcon(filename){
+  const ext = (filename.split(".").pop() || "").toLowerCase();
+
+  const map = {
+    // docs
+    pdf: "📕",
+    doc: "📝", docx: "📝", rtf: "📝", txt: "📄",
+    xls: "📊", xlsx: "📊", csv: "📑",
+    ppt: "📽️", pptx: "📽️",
+
+    // code
+    js: "🟨", ts: "🟦", json: "🧩",
+    html: "🌐", css: "🎨",
+    md: "📘", yml: "⚙️", yaml: "⚙️",
+    xml: "🧾",
+
+    // images
+    png: "🖼️", jpg: "🖼️", jpeg: "🖼️", webp: "🖼️", gif: "🖼️", svg: "🖼️",
+
+    // audio/video
+    mp3: "🎵", wav: "🎵", m4a: "🎵",
+    mp4: "🎬", mov: "🎬", mkv: "🎬", avi: "🎬",
+
+    // archives
+    zip: "🗜️", rar: "🗜️", "7z": "🗜️", tar: "🗜️", gz: "🗜️",
+
+    // executables / installers
+    exe: "🧰", msi: "🧰", apk: "📱", ipa: "📱",
+
+    // misc
+    iso: "💿"
+  };
+
+  return map[ext] || "📁";
+}
+
+  async function refresh(){
+    status("");
+    const res = await fetch("/api/files", { headers: headers() });
+    if(!res.ok){ status("❌ Sai PIN hoặc không truy cập được"); return; }
+    const data = await res.json();
+    const tb = $("list");
+    tb.innerHTML = "";
+    for(const f of data.files){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+  <td>
+    <div class="filecell">
+      <span class="ficon" title=".${(f.name.split(".").pop()||"").toLowerCase()}">${fileIcon(f.name)}</span>
+      <div>
+        <div class="fname">${f.name}</div>
+        <div class="fext">.${(f.name.split(".").pop()||"").toLowerCase() || "file"}</div>
+      </div>
+    </div>
+  </td>
+  <td>${fmt(f.size)}</td>
+  <td class="row">
+    <a href="/download/${encodeURIComponent(f.name)}" target="_blank">Tải</a>
+    <button onclick="delFile('${encodeURIComponent(f.name)}')">Xoá</button>
+  </td>
+`;
+      tb.appendChild(tr);
+    }
+  }
+
+  async function upload(){
+    const files = $("picker").files;
+    if(!files || files.length===0){ status("Chọn file trước"); return; }
+    const fd = new FormData();
+    for(const f of files) fd.append("files", f);
+    status("⏳ Đang upload...");
+    const res = await fetch("/api/upload", { method:"POST", body: fd, headers: headers() });
+    if(!res.ok){ status("❌ Upload lỗi (PIN?)"); return; }
+    status("✅ Xong");
+    $("picker").value = "";
+    let es = null;
+let pollTimer = null;
+
+function startRealtime(){
+  // Dùng SSE nếu được
+  try {
+    const pin = $("pin").value.trim();
+    const url = pin ? `/events?pin=${encodeURIComponent(pin)}` : `/events`;
+    es = new EventSource(url);
+
+    es.addEventListener("changed", () => {
+      refresh();
+    });
+
+    es.addEventListener("hello", () => {
+      // kết nối ok
+    });
+
+    es.onerror = () => {
+      // SSE lỗi -> fallback polling
+      try { es.close(); } catch {}
+      es = null;
+      startPolling();
+    };
+  } catch {
+    startPolling();
+  }
+}
+
+function startPolling(){
+  if (pollTimer) return;
+  pollTimer = setInterval(() => refresh(), 3000); // 3s/lần
+}
+    refresh();
+  }
+
+  async function delFile(nameEnc){
+    const res = await fetch(`/api/files/${nameEnc}`, { method:"DELETE", headers: headers() });
+    if(!res.ok){ status("❌ Xoá lỗi (PIN?)"); return; }
+    refresh();
+  }
+
+  // Drag & drop
+  const drop = $("drop");
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.style.borderColor="#333"; });
+  drop.addEventListener("dragleave", () => drop.style.borderColor="#aaa");
+  drop.addEventListener("drop", e => {
+    e.preventDefault(); drop.style.borderColor="#aaa";
+    $("picker").files = e.dataTransfer.files;
+    upload();
+  });
+
+  refresh();
+startRealtime();
+</script>
+</body>
+</html>
