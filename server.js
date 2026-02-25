@@ -16,6 +16,8 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const app = express();
 app.use(express.json());
+
+// Cho phép tải trực tiếp file frontend (index.html, css, js) mà không cần nhập PIN
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===== SSE (Server-Sent Events) =====
@@ -31,7 +33,7 @@ function sseSend(event, data) {
 }
 
 app.get("/events", (req, res) => {
-  // (optional) PIN check giống các API khác
+  // Xác thực PIN cho sự kiện realtime
   if (PIN) {
     const pin = req.headers["x-pin"] || req.query.pin;
     if (pin !== PIN) return res.status(401).end();
@@ -58,7 +60,6 @@ app.get("/events", (req, res) => {
   });
 });
 
-
 function getLocalIPv4() {
   const nets = os.networkInterfaces();
   for (const name of Object.keys(nets)) {
@@ -69,22 +70,27 @@ function getLocalIPv4() {
   return "127.0.0.1";
 }
 
-// PIN middleware (optional)
+// ===== MIDDLEWARE XÁC THỰC MÃ PIN =====
+// Middleware này chặn tất cả các route bên dưới (API & Tải file) nếu không có mã PIN đúng
 app.use((req, res, next) => {
   if (!PIN) return next();
-  // Cho phép trang index load không cần PIN để hiện UI nhập PIN
-  if (req.method === "GET" && (req.path === "/" || req.path.startsWith("/index"))) return next();
 
+  // Đọc mã PIN từ header (Fetch API) HOẶC từ query URL (thẻ <a>, <video>, <iframe>)
   const pin = req.headers["x-pin"] || req.query.pin;
-  if (pin !== PIN) return res.status(401).json({ ok: false, error: "Unauthorized (PIN)" });
+  if (pin !== PIN) {
+    return res.status(401).json({ ok: false, error: "Unauthorized (Mã PIN không đúng)" });
+  }
   next();
 });
 
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, UPLOAD_DIR),
   filename: (_, file, cb) => {
-    // tránh lỗi tên trùng
-    const safe = file.originalname.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_");
+    // FIX VỠ CHỮ: Chuyển đổi mã charset của Multer sang UTF-8
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    
+    // Chuẩn hoá sang Unicode Dựng sẵn (NFC) & loại bỏ ký tự không hợp lệ của HĐH
+    const safe = originalName.normalize("NFC").replace(/[<>:"/\\|?*\x00-\x1F]/g, "_");
     const target = path.join(UPLOAD_DIR, safe);
     if (!fs.existsSync(target)) return cb(null, safe);
 
@@ -98,7 +104,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 1024 * 1024 * 1024 } // 1GB/file (tuỳ chỉnh)
+  limits: { fileSize: 1024 * 1024 * 1024 } // Giới hạn 1GB/file (tuỳ chỉnh)
 });
 
 app.get("/api/files", (_, res) => {
@@ -123,6 +129,9 @@ app.get("/download/:name", (req, res) => {
   const name = req.params.name;
   const p = path.join(UPLOAD_DIR, name);
   if (!fs.existsSync(p)) return res.status(404).send("Not found");
+  
+  // Trả về file, hỗ trợ CORS để có thể xem trước nội dung từ iframe/thư viện khác
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.download(p, name);
 });
 
