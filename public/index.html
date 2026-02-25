@@ -628,7 +628,11 @@
       try {
         const res = await safeFetch("/api/upload", { method: "POST", body: fd, headers: headers() });
         if (!res.ok) {
-          showStatus("Lỗi tải lên. Vui lòng kiểm tra mã PIN", "error");
+          if (res.status === 429) {
+            showStatus("Tải lên quá nhanh. Vui lòng thử lại sau 1 phút!", "error");
+          } else {
+            showStatus("Lỗi tải lên. Vui lòng kiểm tra mã PIN", "error");
+          }
         } else {
           showStatus("Tải lên thành công!", "success");
           $("picker").value = "";

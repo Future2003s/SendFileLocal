@@ -20,6 +20,10 @@ await fsPromises.mkdir(UPLOAD_DIR, { recursive: true });
 
 const app = express();
 
+// Nhận đúng IP thật của client nếu LAN Share chạy sau reverse proxy (Nginx, Cloudflare...)
+// Điều này giúp rate limit hoạt động đúng trên từng IP thay vì block toàn bộ IP của proxy.
+app.set('trust proxy', true);
+
 // ─── MIDDLEWARE ────────────────────────────────────────────────────────────────
 
 // Gzip/Brotli nén tất cả response text (JSON, HTML, CSS, JS)
