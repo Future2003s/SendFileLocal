@@ -30,8 +30,9 @@ app.set('trust proxy', true);
 // Gzip/Brotli nén tất cả response text (JSON, HTML, CSS, JS)
 app.use(compression({ level: 6 }));
 
-// Parse JSON body
-app.use(express.json());
+// Parse JSON body (tăng limit để tránh 413 khi gửi metadata lớn)
+app.use(express.json({ limit: "10gb" }));
+app.use(express.urlencoded({ extended: true, limit: "10gb" }));
 
 // Phục vụ file tĩnh với cache 1 ngày cho assets (HTML luôn revalidate)
 app.use(
