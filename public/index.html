@@ -626,7 +626,10 @@
       showStatus(`Đang tải lên ${files.length} file...`, "loading");
 
       try {
-        const res = await safeFetch("/api/upload", { method: "POST", body: fd, headers: headers() });
+        // Gửi PIN cả trong header lẫn query param để đảm bảo hoạt động sau proxy/Nginx
+        const pinVal = $("pin").value.trim();
+        const uploadUrl = pinVal ? `/api/upload?pin=${encodeURIComponent(pinVal)}` : "/api/upload";
+        const res = await safeFetch(uploadUrl, { method: "POST", body: fd, headers: headers() });
         if (!res.ok) {
           showStatus("Lỗi tải lên. Vui lòng kiểm tra mã PIN", "error");
         } else {

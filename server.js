@@ -12,7 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
-const PIN = process.env.PIN || "8081";
+// .trim() để tránh lỗi khi biến môi trường có newline/khoảng trắng thừa trên Linux
+const PIN = (process.env.PIN ?? "8081").trim();
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 
 // Tạo thư mục uploads nếu chưa tồn tại
