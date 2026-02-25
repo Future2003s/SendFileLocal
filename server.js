@@ -116,27 +116,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── RATE LIMITING (upload) ───────────────────────────────────────────────────
-// Giới hạn 10 lần upload mỗi phút mỗi IP để tránh lạm dụng
-const uploadHits = new Map(); // ip → { count, resetAt }
-const UPLOAD_LIMIT = 10;
-const UPLOAD_WINDOW_MS = 60_000;
-
-function uploadRateLimit(req, res, next) {
-  const ip = req.ip;
-  const now = Date.now();
-  const entry = uploadHits.get(ip);
-
-  if (!entry || now > entry.resetAt) {
-    uploadHits.set(ip, { count: 1, resetAt: now + UPLOAD_WINDOW_MS });
-    return next();
-  }
-  if (entry.count >= UPLOAD_LIMIT) {
-    return res.status(429).json({ ok: false, error: "Too Many Requests" });
-  }
-  entry.count++;
-  next();
-}
+// --- RATE LIMITING (REMOVED) ---
+// Do chạy trong mạng nội bộ, upload không giới hạn.
 
 // ─── MULTER STORAGE ───────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
@@ -216,7 +197,7 @@ app.get("/api/files", async (req, res) => {
   }
 });
 
-app.post("/api/upload", uploadRateLimit, upload.array("files"), async (req, res) => {
+app.post("/api/upload", upload.array("files"), async (req, res) => {
   try {
     const uploaded = (req.files ?? []).map((f) => f.filename);
     res.json({ ok: true, uploaded });
