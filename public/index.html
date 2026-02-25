@@ -1,59 +1,174 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>LAN Share</title>
-  
-  <!-- Thêm Tailwind CSS để style giao diện -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Thêm Phosphor Icons để dùng icon đẹp -->
-  <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
 
-  <!-- Thêm các thư viện đọc file nâng cao -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Preconnect CDN để giảm DNS + TLS latency cho các thư viện -->
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+
+  <!-- pdf.js / mammoth / xlsx được load lazy khi cần (xem lazyLoad bên dưới) -->
 
   <style>
-    /* Tuỳ chỉnh thanh cuộn cho danh sách file gọn gàng hơn */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    
-    /* Ẩn input file mặc định */
-    input[type="file"] { display: none; }
-
-    /* Animation cho thanh tiến trình tải lên */
-    @keyframes progress-stripes {
-      from { background-position: 1rem 0; }
-      to { background-position: 0 0; }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
     }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    @keyframes progress-stripes {
+      from {
+        background-position: 1rem 0;
+      }
+
+      to {
+        background-position: 0 0;
+      }
+    }
+
     .animate-progress {
       animation: progress-stripes 1s linear infinite;
-      background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+      background-image: linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent);
       background-size: 1rem 1rem;
     }
 
-    /* Tuỳ chỉnh hiển thị nội dung cho Word (docx) và Excel (xlsx) */
-    .preview-doc-content { font-family: 'Times New Roman', Times, serif; font-size: 16px; line-height: 1.6; }
-    .preview-doc-content h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; }
-    .preview-doc-content h2 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; }
-    .preview-doc-content p { margin-bottom: 1em; }
-    .preview-doc-content table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
-    .preview-doc-content td, .preview-doc-content th { border: 1px solid #ccc; padding: 8px; }
-    .preview-doc-content ul { list-style: disc; margin-left: 20px; margin-bottom: 1em; }
-    .preview-doc-content ol { list-style: decimal; margin-left: 20px; margin-bottom: 1em; }
+    .preview-doc-content {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .preview-doc-content h1 {
+      font-size: 2em;
+      font-weight: bold;
+      margin-bottom: .5em;
+    }
+
+    .preview-doc-content h2 {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: .5em;
+    }
+
+    .preview-doc-content p {
+      margin-bottom: 1em;
+    }
+
+    .preview-doc-content table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 1em;
+    }
+
+    .preview-doc-content th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .preview-doc-content td,
+    .preview-doc-content th {
+      border: 1px solid #cbd5e1;
+      padding: 6px 10px;
+      vertical-align: top;
+    }
+
+    .preview-doc-content ul {
+      list-style-type: disc;
+      margin-left: 20px;
+      margin-bottom: 1em;
+    }
+
+    .preview-doc-content ol {
+      list-style-type: decimal;
+      margin-left: 20px;
+      margin-bottom: 1em;
+    }
+
+    /* CSS cho Excel (SheetJS) */
+    .preview-excel-content {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .preview-excel-content table {
+      border-collapse: collapse;
+      min-width: 100%;
+      margin-bottom: 1em;
+      font-family: inherit;
+      white-space: nowrap;
+      /* Tắt tự động xuống dòng trong ô Excel */
+    }
+
+    .preview-excel-content th {
+      background-color: #f8fafc;
+      font-weight: 600;
+      text-align: center;
+      border: 1px solid #cbd5e1;
+      padding: 8px 16px;
+      color: #334155;
+    }
+
+    .preview-excel-content td {
+      border: 1px solid #e2e8f0;
+      padding: 6px 12px;
+      vertical-align: middle;
+      color: #1e293b;
+    }
+
+    .preview-excel-content tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    /* Row enter animation nhẹ */
+    @keyframes row-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .file-row-new {
+      animation: row-in .18s ease-out forwards;
+    }
   </style>
 </head>
+
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen p-4 md:p-8">
 
   <div class="max-w-4xl mx-auto space-y-6">
-    
-    <!-- HEADER & ĐIỀU KHIỂN -->
-    <header class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+    <!-- HEADER -->
+    <header
+      class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold flex items-center gap-2 text-slate-900">
           <i class="ph ph-hard-drives text-blue-500 text-3xl"></i>
@@ -61,25 +176,19 @@
         </h1>
         <p class="text-slate-500 text-sm mt-1">Chia sẻ tệp tin nội bộ nhanh chóng</p>
       </div>
-
       <div class="flex items-center gap-3 w-full md:w-auto">
         <div class="relative flex-1 md:w-64">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <i class="ph ph-lock-key text-slate-400"></i>
           </div>
-          <input 
-            id="pin" 
-            type="password"
-            placeholder="" 
+          <input id="pin" type="password" placeholder=""
             class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            onkeyup="if(event.key === 'Enter') refresh()"
-          />
+            onkeyup="if(event.key==='Enter') { lastEtag=null; refresh(true); }"
+            oninput="clearTimeout(_pinTimer); _pinTimer=setTimeout(()=>{ lastEtag=null; refresh(true); }, 400)" />
         </div>
-        <button 
-          onclick="refresh()" 
+        <button onclick="refresh(true)"
           class="p-2.5 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 rounded-xl transition-colors shrink-0"
-          title="Tải lại danh sách / Xác nhận PIN"
-        >
+          title="Tải lại danh sách / Xác nhận PIN">
           <i class="ph ph-arrows-clockwise text-xl"></i>
         </button>
       </div>
@@ -87,11 +196,8 @@
 
     <!-- KHU VỰC KÉO THẢ UPLOAD -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-      <label 
-        id="drop" 
-        for="picker"
-        class="relative flex flex-col items-center justify-center w-full h-40 border-2 border-slate-300 border-dashed rounded-xl bg-slate-50 hover:bg-blue-50 hover:border-blue-400 transition-all cursor-pointer group overflow-hidden"
-      >
+      <label id="drop" for="picker"
+        class="relative flex flex-col items-center justify-center w-full h-40 border-2 border-slate-300 border-dashed rounded-xl bg-slate-50 hover:bg-blue-50 hover:border-blue-400 transition-all cursor-pointer group overflow-hidden">
         <div class="flex flex-col items-center justify-center pt-5 pb-6 transition-all duration-300">
           <div class="p-3 bg-white rounded-full shadow-sm mb-3 group-hover:scale-110 transition-transform">
             <i class="ph ph-cloud-arrow-up text-3xl text-blue-500"></i>
@@ -103,9 +209,9 @@
         </div>
         <input id="picker" type="file" multiple onchange="upload()" />
       </label>
-      
-      <!-- Trạng thái Upload -->
-      <div id="status-container" class="hidden mt-4 items-center gap-3 p-3 rounded-lg text-sm font-medium transition-all duration-300">
+
+      <div id="status-container"
+        class="hidden mt-4 items-center gap-3 p-3 rounded-lg text-sm font-medium transition-all duration-300">
         <i class="ph ph-spinner animate-spin text-lg"></i>
         <span id="status">Đang tải lên...</span>
       </div>
@@ -116,42 +222,36 @@
       <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <h2 class="font-semibold text-slate-700">Tệp tin đã tải lên</h2>
-          <span id="file-count" class="text-xs font-medium bg-slate-200 text-slate-600 py-1 px-2.5 rounded-full">0 file</span>
+          <span id="file-count" class="text-xs font-medium bg-slate-200 text-slate-600 py-1 px-2.5 rounded-full">0
+            file</span>
         </div>
-        
-        <!-- Các nút thao tác hàng loạt -->
         <div id="table-actions" class="hidden items-center gap-2">
-          <span id="selected-text" class="text-sm text-slate-500 hidden mr-2"><span id="selected-count">0</span> đã chọn</span>
-          <button 
-            id="btn-download-selected" 
-            onclick="downloadSelected()" 
-            class="hidden text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 px-3 rounded-lg items-center gap-1 transition-colors border border-blue-100"
-          >
+          <span id="selected-text" class="text-sm text-slate-500 hidden mr-2"><span id="selected-count">0</span> đã
+            chọn</span>
+          <button id="btn-download-selected" onclick="downloadSelected()"
+            class="hidden text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 px-3 rounded-lg items-center gap-1 transition-colors border border-blue-100">
             <i class="ph ph-download-simple text-sm"></i> Tải chọn
           </button>
-          <button 
-            id="btn-delete-selected" 
-            onclick="openDeleteSelectedModal()" 
-            class="hidden text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 py-2 px-3 rounded-lg items-center gap-1 transition-colors border border-red-100"
-          >
+          <button id="btn-delete-selected" onclick="openDeleteSelectedModal()"
+            class="hidden text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 py-2 px-3 rounded-lg items-center gap-1 transition-colors border border-red-100">
             <i class="ph ph-trash text-sm"></i> Xoá chọn
           </button>
-          <button 
-            id="btn-delete-all" 
-            onclick="openDeleteAllModal()" 
-            class="text-xs font-medium bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 py-2 px-3 rounded-lg flex items-center gap-1 transition-colors border border-slate-200"
-          >
+          <button id="btn-delete-all" onclick="openDeleteAllModal()"
+            class="text-xs font-medium bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 py-2 px-3 rounded-lg flex items-center gap-1 transition-colors border border-slate-200">
             <i class="ph ph-trash text-sm"></i> Xoá tất cả
           </button>
         </div>
       </div>
-      
+
       <div class="overflow-x-auto min-h-[200px]">
         <table class="w-full text-left border-collapse whitespace-nowrap">
           <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider hidden md:table-header-group">
             <tr>
+              <th class="px-4 py-3 font-medium w-10 text-center text-slate-400">#</th>
               <th class="px-6 py-3 font-medium w-12 text-center">
-                <input type="checkbox" id="cb-select-all" class="cursor-pointer w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" onchange="toggleSelectAll()">
+                <input type="checkbox" id="cb-select-all"
+                  class="cursor-pointer w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  onchange="toggleSelectAll()">
               </th>
               <th class="px-6 py-3 font-medium">Tên File</th>
               <th class="px-6 py-3 font-medium w-32 text-right">Kích thước</th>
@@ -159,723 +259,686 @@
             </tr>
           </thead>
           <tbody id="list" class="divide-y divide-slate-100 text-sm">
-            <!-- Danh sách file sẽ được render vào đây -->
+            <!-- render bởi JS -->
           </tbody>
         </table>
       </div>
     </div>
-    
+
   </div>
 
   <!-- MODAL XEM TRƯỚC -->
-  <div id="preview-modal" onclick="if(event.target === this) closePreviewModal()" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-all p-4">
+  <div id="preview-modal" onclick="if(event.target===this)closePreviewModal()"
+    class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-all p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl flex flex-col overflow-hidden h-[90vh]">
       <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50 shrink-0">
-        <h3 id="preview-title" class="text-lg font-bold text-slate-800 truncate pr-4" title="">Tên file</h3>
+        <h3 id="preview-title" class="text-lg font-bold text-slate-800 truncate pr-4" title=""></h3>
         <div class="flex items-center gap-2">
-          <a id="preview-download-btn" href="#" class="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+          <a id="preview-download-btn" href="#"
+            class="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
             <i class="ph ph-download-simple text-lg"></i> Tải về
           </a>
-          <button onclick="closePreviewModal()" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-200 rounded-xl transition-colors">
+          <button onclick="closePreviewModal()"
+            class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-200 rounded-xl transition-colors">
             <i class="ph ph-x text-xl"></i>
           </button>
         </div>
       </div>
-      <!-- Khu vực hiển thị nội dung -->
-      <div id="preview-body" class="p-4 md:p-6 overflow-auto flex-1 bg-slate-100 flex flex-col items-center justify-center">
-        <!-- Nội dung xem trước sẽ được hiển thị ở đây -->
-      </div>
+      <div id="preview-body"
+        class="p-4 md:p-6 overflow-auto flex-1 bg-slate-100 flex flex-col items-center justify-center"></div>
     </div>
   </div>
 
   <!-- MODAL XÁC NHẬN XOÁ -->
-  <div id="delete-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-all">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden transform transition-all">
+  <div id="delete-modal"
+    class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-all">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
       <div class="p-6">
         <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
           <i class="ph ph-warning-circle text-2xl text-red-600"></i>
         </div>
         <h3 class="text-lg font-bold text-center text-slate-900 mb-2">Xác nhận xoá</h3>
-        <p id="delete-message" class="text-sm text-center text-slate-500 mb-1">Bạn có chắc chắn muốn xoá tệp tin này không?</p>
-        <p id="delete-filename" class="text-sm font-semibold text-center text-slate-700 break-all line-clamp-2 mt-2"></p>
+        <p id="delete-message" class="text-sm text-center text-slate-500 mb-1"></p>
+        <p id="delete-filename" class="text-sm font-semibold text-center text-slate-700 break-all line-clamp-2 mt-2">
+        </p>
       </div>
       <div class="flex border-t border-slate-100">
-        <button onclick="closeDeleteModal()" class="flex-1 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
-          Hủy bỏ
-        </button>
-        <button onclick="executeDelete()" class="flex-1 px-4 py-3 text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors border-l border-red-600/10">
-          Xoá file
-        </button>
+        <button onclick="closeDeleteModal()"
+          class="flex-1 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Hủy
+          bỏ</button>
+        <button onclick="executeDelete()"
+          class="flex-1 px-4 py-3 text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors border-l border-red-600/10">Xoá
+          file</button>
       </div>
     </div>
   </div>
 
-<script>
-  const $ = (id) => document.getElementById(id);
-  
-  // Kiểm tra xem có đang chạy ở chế độ xem trước không (như Canvas hoặc mở file cục bộ)
-  const isLocalPreview = window.location.protocol === 'blob:' || window.location.protocol === 'file:' || window.location.protocol === 'data:';
-  
-  // Dữ liệu file giả lập dùng cho chế độ xem trước
-  let mockFiles = isLocalPreview ? [
-    { name: "báo_cáo_quý_3.pdf", size: 1048576, url: null },
-    { name: "source_code_update.zip", size: 5242880, url: null },
-    { name: "ảnh_banner_đẹp.png", size: 850000, url: null }
-  ] : [];
+  <script>
+    // ─── UTILS ────────────────────────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
 
-  // State quản lý danh sách và lựa chọn
-  let currentFiles = []; 
-  let selectedFiles = new Set();
-  let currentFilesToDelete = []; // Mảng chứa { encName, name }
+    const isLocalPreview = ['blob:', 'file:', 'data:'].includes(window.location.protocol);
+    let _pinTimer = null; // Dùng cho debounce auto-refresh khi gõ PIN
 
-  // Thiết lập PDF.js Worker ngay khi tải
-  const setupPdfWorker = () => {
-    if (window['pdfjs-dist/build/pdf']) {
-      window['pdfjs-dist/build/pdf'].GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-      return true;
+    // ─── LAZY LOADER ─────────────────────────────────────────────────────────
+    // Chỉ inject script khi thực sự cần, tránh load ~2MB thư viện khi mở trang
+    const _loaded = new Set();
+    function lazyLoad(src) {
+      if (_loaded.has(src)) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => { _loaded.add(src); resolve(); };
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
     }
-    return false;
-  };
 
-  // Wrapper cho fetch API để hỗ trợ môi trường không có server
-  async function safeFetch(path, options = {}) {
-    if (isLocalPreview) {
-      // Giả lập thời gian delay của mạng
-      await new Promise(resolve => setTimeout(resolve, path.includes('upload') ? 600 : 200));
-      
-      const clientPin = options.headers && options.headers["X-PIN"];
-      const SERVER_PIN = "1234";
-      
-      if (clientPin !== SERVER_PIN) {
-        return { ok: false, status: 401 }; 
-      }
+    // ─── MOCK DATA (local preview) ────────────────────────────────────────────
+    let mockFiles = isLocalPreview ? [
+      { name: "báo_cáo_quý_3.pdf", size: 1048576, url: null },
+      { name: "source_code_update.zip", size: 5242880, url: null },
+      { name: "ảnh_banner_đẹp.png", size: 850000, url: null }
+    ] : [];
 
-      if (path.startsWith("/api/files")) {
-        if (options.method === "DELETE") {
-          const fName = decodeURIComponent(path.split("/").pop());
-          mockFiles = mockFiles.filter(f => f.name !== fName);
-          return { ok: true };
+    // ─── STATE ────────────────────────────────────────────────────────────────
+    let currentFiles = [];
+    let selectedFiles = new Set();
+    let currentFilesToDelete = [];
+    let lastEtag = null;          // Dùng cho conditional GET
+    let _refreshTimer = null;
+
+    // ─── PDF.js worker setup ──────────────────────────────────────────────────
+    const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+    const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    async function setupPdfWorker() {
+      await lazyLoad(PDFJS_CDN);
+      const lib = window['pdfjs-dist/build/pdf'];
+      if (lib) lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      return lib;
+    }
+
+    // ─── MOCK FETCH ───────────────────────────────────────────────────────────
+    async function safeFetch(path, options = {}) {
+      if (isLocalPreview) {
+        await new Promise(r => setTimeout(r, path.includes('upload') ? 600 : 200));
+        const clientPin = options.headers?.["X-PIN"];
+        if (clientPin !== "1234") return { ok: false, status: 401 };
+        if (path.startsWith("/api/files")) {
+          if (options.method === "DELETE") {
+            const fName = decodeURIComponent(path.split("/").pop());
+            mockFiles = mockFiles.filter(f => f.name !== fName);
+            return { ok: true };
+          }
+          return { ok: true, json: async () => ({ files: mockFiles }) };
         }
-        return { ok: true, json: async () => ({ files: mockFiles }) };
-      }
-      
-      if (path === "/api/upload" && options.method === "POST") {
-        const formData = options.body;
-        if (formData) {
-          const files = formData.getAll("files");
-          for (const file of files) {
-            // Giữ lại file blob URL để có thể preview file ảo khi upload cục bộ
+        if (path === "/api/upload" && options.method === "POST") {
+          for (const file of (options.body?.getAll("files") ?? [])) {
             mockFiles.push({ name: file.name, size: file.size, url: URL.createObjectURL(file) });
           }
+          return { ok: true };
         }
-        return { ok: true };
+        return { ok: false };
       }
-      
-      return { ok: false };
-    }
-    return fetch(path, options);
-  }
-  
-  function showStatus(text, type = 'loading') {
-    const container = $("status-container");
-    const statusText = $("status");
-    const icon = container.querySelector('i');
-    
-    if (!text) {
-      container.classList.add('hidden');
-      return;
-    }
-    
-    container.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'bg-red-50', 'text-red-700', 'bg-green-50', 'text-green-700', 'bg-blue-500', 'text-white', 'animate-progress');
-    icon.className = '';
-    
-    if (type === 'loading') {
-      container.classList.add('bg-blue-500', 'text-white', 'animate-progress');
-      icon.className = 'ph ph-spinner animate-spin text-lg';
-    } else if (type === 'error') {
-      container.classList.add('bg-red-50', 'text-red-700');
-      icon.className = 'ph ph-warning-circle text-lg';
-    } else if (type === 'success') {
-      container.classList.add('bg-green-50', 'text-green-700');
-      icon.className = 'ph ph-check-circle text-lg';
-    }
-    
-    statusText.textContent = text;
-    
-    if(type === 'success' || type === 'error') {
-      setTimeout(() => container.classList.add('hidden'), 3000);
-    }
-  }
-
-  function headers() {
-    const pin = $("pin").value.trim();
-    return pin ? {"X-PIN": pin} : {};
-  }
-
-  function fmt(bytes){
-    const u=["B","KB","MB","GB","TB"]; let i=0,n=bytes;
-    while(n>=1024 && i<u.length-1){n/=1024;i++}
-    return `${n.toFixed(n>=10||i===0?0:1)} ${u[i]}`;
-  }
-
-  function fileIcon(filename){
-    const ext = (filename.split(".").pop() || "").toLowerCase();
-    const map = {
-      pdf: "📕", doc: "📝", docx: "📝", rtf: "📝", txt: "📄",
-      xls: "📊", xlsx: "📊", csv: "📑", ppt: "📽️", pptx: "📽️",
-      js: "🟨", ts: "🟦", json: "🧩", html: "🌐", css: "🎨",
-      md: "📘", yml: "⚙️", yaml: "⚙️", xml: "🧾",
-      png: "🖼️", jpg: "🖼️", jpeg: "🖼️", webp: "🖼️", gif: "🖼️", svg: "🖼️",
-      mp3: "🎵", wav: "🎵", m4a: "🎵",
-      mp4: "🎬", mov: "🎬", mkv: "🎬", avi: "🎬",
-      zip: "🗜️", rar: "🗜️", "7z": "🗜️", tar: "🗜️", gz: "🗜️",
-      exe: "🧰", msi: "🧰", apk: "📱", ipa: "📱", iso: "💿"
-    };
-    return map[ext] || "📁";
-  }
-
-  // Quản lý giao diện chọn file
-  function updateSelectionUI() {
-    const tableActions = $("table-actions");
-    const btnDownloadSelected = $("btn-download-selected");
-    const btnDeleteSelected = $("btn-delete-selected");
-    const btnDeleteAll = $("btn-delete-all");
-    const selectedText = $("selected-text");
-    const cbSelectAll = $("cb-select-all");
-
-    if (currentFiles.length === 0) {
-      tableActions.classList.add("hidden");
-      tableActions.classList.remove("flex");
-    } else {
-      tableActions.classList.remove("hidden");
-      tableActions.classList.add("flex");
+      return fetch(path, options);
     }
 
-    if (selectedFiles.size > 0) {
-      btnDownloadSelected.classList.remove("hidden");
-      btnDownloadSelected.classList.add("flex");
-      btnDeleteSelected.classList.remove("hidden");
-      btnDeleteSelected.classList.add("flex");
-      selectedText.classList.remove("hidden");
+    // ─── STATUS BAR ───────────────────────────────────────────────────────────
+    function showStatus(text, type = 'loading') {
+      const container = $("status-container");
+      const statusText = $("status");
+      const icon = container.querySelector('i');
+      if (!text) { container.classList.add('hidden'); return; }
+
+      container.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'bg-red-50', 'text-red-700', 'bg-green-50', 'text-green-700', 'bg-blue-500', 'text-white', 'animate-progress', 'flex');
+      icon.className = '';
+
+      if (type === 'loading') {
+        container.classList.add('bg-blue-500', 'text-white', 'animate-progress', 'flex');
+        icon.className = 'ph ph-spinner animate-spin text-lg';
+      } else if (type === 'error') {
+        container.classList.add('bg-red-50', 'text-red-700', 'flex');
+        icon.className = 'ph ph-warning-circle text-lg';
+      } else {
+        container.classList.add('bg-green-50', 'text-green-700', 'flex');
+        icon.className = 'ph ph-check-circle text-lg';
+      }
+      statusText.textContent = text;
+      if (type !== 'loading') setTimeout(() => container.classList.add('hidden'), 3000);
+    }
+
+    // ─── HEADERS ──────────────────────────────────────────────────────────────
+    function headers() {
+      const pin = $("pin").value.trim();
+      return pin ? { "X-PIN": pin } : {};
+    }
+
+    // ─── FORMAT ───────────────────────────────────────────────────────────────
+    function fmt(bytes) {
+      const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0, n = bytes;
+      while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+      return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${u[i]}`;
+    }
+
+    function fileIcon(filename) {
+      const ext = (filename.split(".").pop() || "").toLowerCase();
+      const map = {
+        pdf: "📕", doc: "📝", docx: "📝", rtf: "📝", txt: "📄",
+        xls: "📊", xlsx: "📊", csv: "📑", ppt: "📽️", pptx: "📽️",
+        js: "🟨", ts: "🟦", json: "🧩", html: "🌐", css: "🎨",
+        md: "📘", yml: "⚙️", yaml: "⚙️", xml: "🧾",
+        png: "🖼️", jpg: "🖼️", jpeg: "🖼️", webp: "🖼️", gif: "🖼️", svg: "🖼️",
+        mp3: "🎵", wav: "🎵", m4a: "🎵",
+        mp4: "🎬", mov: "🎬", mkv: "🎬", avi: "🎬",
+        zip: "🗜️", rar: "🗜️", "7z": "🗜️", tar: "🗜️", gz: "🗜️",
+        exe: "🧰", msi: "🧰", apk: "📱", ipa: "📱", iso: "💿"
+      };
+      return map[ext] || "📁";
+    }
+
+    // ─── SELECTION UI ─────────────────────────────────────────────────────────
+    function updateSelectionUI() {
+      const hasFiles = currentFiles.length > 0;
+      const hasSelected = selectedFiles.size > 0;
+
+      $("table-actions").classList.toggle("hidden", !hasFiles);
+      $("table-actions").classList.toggle("flex", hasFiles);
+
+      $("btn-download-selected").classList.toggle("hidden", !hasSelected);
+      $("btn-download-selected").classList.toggle("flex", hasSelected);
+      $("btn-delete-selected").classList.toggle("hidden", !hasSelected);
+      $("btn-delete-selected").classList.toggle("flex", hasSelected);
+      $("selected-text").classList.toggle("hidden", !hasSelected);
       $("selected-count").textContent = selectedFiles.size;
-      btnDeleteAll.classList.add("hidden"); 
-    } else {
-      btnDownloadSelected.classList.add("hidden");
-      btnDownloadSelected.classList.remove("flex");
-      btnDeleteSelected.classList.add("hidden");
-      btnDeleteSelected.classList.remove("flex");
-      selectedText.classList.add("hidden");
-      btnDeleteAll.classList.remove("hidden");
+      $("btn-delete-all").classList.toggle("hidden", hasSelected);
+
+      const cbAll = $("cb-select-all");
+      if (cbAll) cbAll.checked = hasFiles && selectedFiles.size === currentFiles.length;
+
+      document.querySelectorAll('.file-cb').forEach(cb => { cb.checked = selectedFiles.has(cb.value); });
     }
 
-    if (cbSelectAll) {
-      cbSelectAll.checked = currentFiles.length > 0 && selectedFiles.size === currentFiles.length;
+    function toggleSelect(encName) {
+      selectedFiles.has(encName) ? selectedFiles.delete(encName) : selectedFiles.add(encName);
+      updateSelectionUI();
     }
 
-    document.querySelectorAll('.file-cb').forEach(cb => {
-      cb.checked = selectedFiles.has(cb.value);
-    });
-  }
-
-  function toggleSelect(encName) {
-    if (selectedFiles.has(encName)) {
-      selectedFiles.delete(encName);
-    } else {
-      selectedFiles.add(encName);
-    }
-    updateSelectionUI();
-  }
-
-  function toggleSelectAll() {
-    if (selectedFiles.size === currentFiles.length) {
-      selectedFiles.clear();
-    } else {
-      currentFiles.forEach(f => selectedFiles.add(encodeURIComponent(f.name.normalize("NFC"))));
-    }
-    updateSelectionUI();
-  }
-
-  function showSkeleton() {
-    const tb = $("list");
-    $("file-count").textContent = `Đang tải...`;
-    tb.innerHTML = Array(3).fill(0).map(() => `
-      <tr class="animate-pulse flex flex-col md:table-row p-4 md:p-0 gap-3 border-b border-slate-100">
-        <td class="md:px-6 md:py-4 hidden md:table-cell w-12 text-center">
-          <div class="w-4 h-4 rounded bg-slate-200 inline-block"></div>
-        </td>
-        <td class="md:px-6 md:py-4">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-slate-200 shrink-0"></div>
-            <div class="min-w-0 flex-1 space-y-2">
-              <div class="h-4 bg-slate-200 rounded w-1/2"></div>
-              <div class="h-3 bg-slate-200 rounded w-1/4"></div>
-            </div>
-          </div>
-        </td>
-        <td class="md:px-6 md:py-4 md:text-right hidden md:table-cell">
-          <div class="h-4 bg-slate-200 rounded w-16 ml-auto"></div>
-        </td>
-        <td class="md:px-6 md:py-4">
-          <div class="flex items-center md:justify-center gap-1">
-            <div class="w-10 h-10 rounded-lg bg-slate-200"></div>
-            <div class="w-10 h-10 rounded-lg bg-slate-200"></div>
-            <div class="w-10 h-10 rounded-lg bg-slate-200"></div>
-          </div>
-        </td>
-      </tr>
-    `).join('');
-  }
-
-  async function refresh(){
-    showSkeleton();
-    
-    try {
-      const res = await safeFetch("/api/files", { headers: headers() });
-      if(!res.ok){ 
-        showStatus("Sai mã PIN hoặc không thể truy cập", "error"); 
-        $("list").innerHTML = `
-          <tr>
-            <td colspan="4" class="px-6 py-10 text-center text-red-500">
-              <i class="ph ph-lock-key text-4xl mb-2"></i>
-              <p>Vui lòng nhập đúng mã PIN để xem tệp tin.</p>
-            </td>
-          </tr>`;
-        $("file-count").textContent = `Bị khóa`;
-        currentFiles = [];
-        updateSelectionUI();
-        return; 
+    function toggleSelectAll() {
+      if (selectedFiles.size === currentFiles.length) {
+        selectedFiles.clear();
+      } else {
+        currentFiles.forEach(f => selectedFiles.add(encodeURIComponent(f.name.normalize("NFC"))));
       }
-      
-      const data = await res.json();
-      currentFiles = data.files || [];
+      updateSelectionUI();
+    }
+
+    // ─── BUILD ROW (DocumentFragment batch) ──────────────────────────────────
+    function buildRow(f, isNew = false) {
+      const fileName = f.name.normalize("NFC");
+      const ext = (fileName.split(".").pop() || "").toLowerCase() || "file";
+      const encName = encodeURIComponent(fileName);
+      const checked = selectedFiles.has(encName) ? 'checked' : '';
+
+      const tr = document.createElement("tr");
+      tr.dataset.enc = encName;
+      tr.className = `hover:bg-slate-50/80 transition-colors group flex flex-col md:table-row p-4 md:p-0 gap-3 border-b border-slate-50${isNew ? ' file-row-new' : ''}`;
+      tr.innerHTML = `
+      <td class="px-4 py-4 text-center hidden md:table-cell text-slate-400 text-xs font-mono w-10 select-none">${f.index ?? ''}</td>
+      <td class="md:px-6 md:py-4 text-center hidden md:table-cell w-12">
+        <input type="checkbox" class="file-cb cursor-pointer w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" value="${encName}" ${checked} onchange="toggleSelect('${encName}')">
+      </td>
+      <td class="md:px-6 md:py-4">
+        <div class="flex items-center gap-3 md:gap-4">
+          <input type="checkbox" class="file-cb md:hidden cursor-pointer w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" value="${encName}" ${checked} onchange="toggleSelect('${encName}')">
+          <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform" title=".${ext}">
+            ${fileIcon(fileName)}
+          </div>
+          <div class="min-w-0 flex-1">
+            <button type="button" onclick="openPreviewModal('${encName}','${fileName.replace(/'/g, "\\'")}')" class="font-medium text-slate-800 truncate hover:text-blue-600 transition-colors text-left outline-none max-w-full overflow-hidden text-ellipsis" title="${fileName}">${fileName}</button>
+            <div class="text-xs text-slate-400 uppercase tracking-wider mt-0.5">${ext}</div>
+          </div>
+        </div>
+      </td>
+      <td class="md:px-6 md:py-4 text-slate-500 md:text-right font-medium text-sm">
+        <span class="md:hidden inline-block w-20 text-slate-400 font-normal">Kích thước:</span>
+        ${fmt(f.size)}
+      </td>
+      <td class="md:px-6 md:py-4">
+        <div class="flex items-center md:justify-center gap-1">
+          <button onclick="openPreviewModal('${encName}','${fileName.replace(/'/g, "\\'")}')" class="flex items-center justify-center w-10 h-10 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors" title="Xem trước">
+            <i class="ph ph-eye text-xl"></i>
+          </button>
+          <a href="/download/${encName}" target="_blank" class="flex items-center justify-center w-10 h-10 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors" title="Tải xuống">
+            <i class="ph ph-download-simple text-xl"></i>
+          </a>
+          <button onclick="openDeleteModal('${encName}','${fileName.replace(/'/g, "\\'")}')" class="flex items-center justify-center w-10 h-10 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Xoá file">
+            <i class="ph ph-trash text-xl"></i>
+          </button>
+        </div>
+      </td>`;
+      return tr;
+    }
+
+    // ─── DOM DIFF RENDER ──────────────────────────────────────────────────────
+    // Chỉ thêm/xóa row thực sự thay đổi, không xóa trắng toàn bộ bảng
+    function renderFiles(files) {
       const tb = $("list");
-      tb.innerHTML = "";
-      
-      // Lọc bỏ những file đã chọn nhưng không còn trên server
-      const currentEncNames = new Set(currentFiles.map(f => encodeURIComponent(f.name.normalize("NFC"))));
-      for (const encName of selectedFiles) {
-        if (!currentEncNames.has(encName)) selectedFiles.delete(encName);
-      }
-      
-      $("file-count").textContent = `${currentFiles.length} file`;
-      updateSelectionUI();
-      
-      if(currentFiles.length === 0) {
+
+      if (files.length === 0) {
         tb.innerHTML = `
-          <tr>
-            <td colspan="4" class="px-6 py-10 text-center text-slate-400">
-              <i class="ph ph-folder-dashed text-4xl mb-2 animate-bounce mt-4"></i>
-              <p>Chưa có tệp tin nào</p>
-            </td>
-          </tr>
-        `;
+        <tr><td colspan="4" class="px-6 py-10 text-center text-slate-400">
+          <i class="ph ph-folder-dashed text-4xl mb-2 animate-bounce mt-4 block"></i>
+          <p>Chưa có tệp tin nào</p>
+        </td></tr>`;
         return;
       }
 
-      for(const f of currentFiles){
-        // Chuẩn hoá hiển thị tên file UTF-8 để tránh hiển thị lỗi vỡ font
-        const fileName = f.name.normalize("NFC");
-        const ext = (fileName.split(".").pop()||"").toLowerCase() || "file";
-        const encName = encodeURIComponent(fileName);
-        
-        const tr = document.createElement("tr");
-        tr.className = "hover:bg-slate-50/80 transition-colors group flex flex-col md:table-row p-4 md:p-0 gap-3 border-b border-slate-50";
-        tr.innerHTML = `
-          <td class="md:px-6 md:py-4 text-center hidden md:table-cell w-12">
-            <input type="checkbox" class="file-cb cursor-pointer w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" value="${encName}" ${selectedFiles.has(encName) ? 'checked' : ''} onchange="toggleSelect('${encName}')">
-          </td>
-          <td class="md:px-6 md:py-4">
-            <div class="flex items-center gap-3 md:gap-4">
-              <input type="checkbox" class="file-cb md:hidden cursor-pointer w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" value="${encName}" ${selectedFiles.has(encName) ? 'checked' : ''} onchange="toggleSelect('${encName}')">
-              <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform" title=".${ext}">
-                ${fileIcon(fileName)}
-              </div>
-              <div class="min-w-0 flex-1">
-                <button type="button" onclick="openPreviewModal('${encName}', '${fileName.replace(/'/g, "\\'")}')" class="font-medium text-slate-800 truncate hover:text-blue-600 transition-colors text-left outline-none max-w-full overflow-hidden text-ellipsis" title="Xem trước ${fileName}">${fileName}</button>
-                <div class="text-xs text-slate-400 uppercase tracking-wider mt-0.5">${ext}</div>
-              </div>
-            </div>
-          </td>
-          <td class="md:px-6 md:py-4 text-slate-500 md:text-right font-medium text-sm">
-            <span class="md:hidden inline-block w-20 text-slate-400 font-normal">Kích thước:</span>
-            ${fmt(f.size)}
-          </td>
-          <td class="md:px-6 md:py-4">
-            <div class="flex items-center md:justify-center gap-1">
-              <button 
-                onclick="openPreviewModal('${encName}', '${fileName.replace(/'/g, "\\'")}')"
-                class="flex items-center justify-center w-10 h-10 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors"
-                title="Xem trước"
-              >
-                <i class="ph ph-eye text-xl"></i>
-              </button>
-              <a 
-                href="/download/${encName}" 
-                target="_blank"
-                onclick="if(isLocalPreview) { alert('Tính năng tải xuống chỉ hoạt động trên máy chủ thật.'); return false; }"
-                class="flex items-center justify-center w-10 h-10 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors"
-                title="Tải xuống"
-              >
-                <i class="ph ph-download-simple text-xl"></i>
-              </a>
-              <button 
-                onclick="openDeleteModal('${encName}', '${fileName.replace(/'/g, "\\'")}')"
-                class="flex items-center justify-center w-10 h-10 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-                title="Xoá file"
-              >
-                <i class="ph ph-trash text-xl"></i>
-              </button>
-            </div>
-          </td>
-        `;
-        tb.appendChild(tr);
+      // Key set của dữ liệu mới
+      const newKeys = new Set(files.map(f => encodeURIComponent(f.name.normalize("NFC"))));
+
+      // Xóa các placeholder row (locked / empty) — không có data-enc
+      tb.querySelectorAll("tr:not([data-enc])").forEach(tr => tr.remove());
+
+      // Xóa row file không còn tồn tại trên server
+      tb.querySelectorAll("tr[data-enc]").forEach(tr => {
+        if (!newKeys.has(tr.dataset.enc)) tr.remove();
+      });
+
+      // Lấy map row hiện tại
+      const existingMap = new Map();
+      tb.querySelectorAll("tr[data-enc]").forEach(tr => existingMap.set(tr.dataset.enc, tr));
+
+      // Thêm row mới bằng DocumentFragment (batch insert, tránh reflow nhiều lần)
+      const frag = document.createDocumentFragment();
+      for (const f of files) {
+        const encName = encodeURIComponent(f.name.normalize("NFC"));
+        if (!existingMap.has(encName)) {
+          frag.appendChild(buildRow(f, true));
+        }
       }
-    } catch (e) {
-      console.error("Lỗi Refresh:", e);
-      $("list").innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-slate-400">Đang chờ kết nối...</td></tr>`;
-      $("file-count").textContent = `0 file`;
-      currentFiles = [];
-      updateSelectionUI();
+      if (frag.childNodes.length > 0) tb.appendChild(frag);
     }
-  }
 
-  async function upload(){
-    const files = $("picker").files;
-    if(!files || files.length===0) return; 
-    
-    const fd = new FormData();
-    for(const f of files) {
-      // Chuẩn hoá chuỗi sang UTF-8 NFC để máy chủ nhận diện tiếng Việt chính xác (Tránh vỡ chữ từ macOS)
-      const normalizedName = f.name.normalize("NFC");
-      
-      // Tạo bản sao của file với tên đã được chuẩn hoá
-      const safeFile = new File([f], normalizedName, { type: f.type, lastModified: f.lastModified });
-      fd.append("files", safeFile);
+    // ─── REFRESH ─────────────────────────────────────────────────────────────
+    function debouncedRefresh() {
+      clearTimeout(_refreshTimer);
+      _refreshTimer = setTimeout(() => refresh(), 300);
     }
-    
-    const drop = $("drop");
-    drop.classList.add("opacity-50", "pointer-events-none");
-    showStatus(`Đang tải lên ${files.length} file...`, "loading");
-    
-    try {
-      const res = await safeFetch("/api/upload", { method:"POST", body: fd, headers: headers() });
-      if(!res.ok){ 
-        showStatus("Lỗi tải lên. Vui lòng kiểm tra mã PIN", "error"); 
-      } else {
-        showStatus("Tải lên thành công!", "success");
-        $("picker").value = ""; 
-        refresh();
+
+    async function refresh(force = false) {
+      try {
+        const reqHeaders = { ...headers() };
+        // Gửi ETag để server trả 304 nếu không có gì thay đổi
+        if (lastEtag && !force) reqHeaders["If-None-Match"] = lastEtag;
+
+        const res = await safeFetch("/api/files", { headers: reqHeaders });
+
+        if (res.status === 304) return; // Dữ liệu không đổi, không cần re-render
+
+        if (!res.ok) {
+          $("list").innerHTML = `
+          <tr><td colspan="4" class="px-6 py-10 text-center text-red-500">
+            <i class="ph ph-lock-key text-4xl mb-2 block"></i>
+            <p>Vui lòng nhập đúng mã PIN để xem tệp tin.</p>
+          </td></tr>`;
+          $("file-count").textContent = "Bị khóa";
+          currentFiles = [];
+          updateSelectionUI();
+          return;
+        }
+
+        // Lưu ETag mới để dùng lần sau
+        const etag = res.headers?.get?.("ETag");
+        if (etag) lastEtag = etag;
+
+        const data = await res.json();
+        currentFiles = data.files || [];
+
+        // Lọc selection đã lỗi thời
+        const encSet = new Set(currentFiles.map(f => encodeURIComponent(f.name.normalize("NFC"))));
+        for (const enc of selectedFiles) { if (!encSet.has(enc)) selectedFiles.delete(enc); }
+
+        $("file-count").textContent = `${currentFiles.length} file`;
+        updateSelectionUI();
+        renderFiles(currentFiles);
+
+      } catch (e) {
+        console.error("Refresh error:", e);
+        if (currentFiles.length === 0) {
+          $("list").innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-slate-400">Đang chờ kết nối...</td></tr>`;
+        }
       }
-    } catch (e) {
-      console.error("Lỗi Upload:", e);
-      showStatus("Mất kết nối với máy chủ", "error");
-    } finally {
-      drop.classList.remove("opacity-50", "pointer-events-none");
     }
-  }
 
-  // Quản lý Modal Xem trước & Render PDF/Office
-  function openPreviewModal(encName, fileName) {
-    const ext = fileName.split('.').pop().toLowerCase();
-    const previewBody = $("preview-body");
-    
-    $("preview-title").textContent = fileName;
-    $("preview-title").title = fileName;
-    $("preview-modal").classList.remove("hidden");
-    
-    // Cập nhật nút tải xuống trong xem trước
-    const downloadBtn = $("preview-download-btn");
-    downloadBtn.href = `/download/${encName}`;
-    downloadBtn.onclick = isLocalPreview ? (e) => { e.preventDefault(); alert('Tính năng tải xuống chỉ hoạt động trên máy chủ thật.'); } : null;
+    // ─── UPLOAD ──────────────────────────────────────────────────────────────
+    async function upload() {
+      const files = $("picker").files;
+      if (!files?.length) return;
 
-    // Load spinner
-    previewBody.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-blue-500"><i class="ph ph-spinner animate-spin text-5xl mb-2"></i><p class="font-medium">Đang xử lý nội dung...</p></div>';
+      const fd = new FormData();
+      for (const f of files) {
+        fd.append("files", new File([f], f.name.normalize("NFC"), { type: f.type, lastModified: f.lastModified }));
+      }
 
-    let actualUrl = `/download/${encName}`;
-    
-    // Nếu ở chế độ dùng thử, kiểm tra xem có url ảo để xem trước hay không
-    if (isLocalPreview) {
-      const mockF = mockFiles.find(f => encodeURIComponent(f.name.normalize("NFC")) === encName);
-      if (mockF && mockF.url) {
-        actualUrl = mockF.url;
-      } else {
-        previewBody.innerHTML = `<div class="text-center text-slate-500">
-           <i class="ph ph-eye-slash text-5xl mb-3 text-slate-300"></i>
-           <p class="font-medium text-slate-700">Không thể xem trước tệp ảo</p>
-           <p class="text-sm mt-1">Trong chế độ dùng thử, chỉ hỗ trợ xem trước các tệp bạn vừa mới kéo thả tải lên.</p>
+      const drop = $("drop");
+      drop.classList.add("opacity-50", "pointer-events-none");
+      showStatus(`Đang tải lên ${files.length} file...`, "loading");
+
+      try {
+        const res = await safeFetch("/api/upload", { method: "POST", body: fd, headers: headers() });
+        if (!res.ok) {
+          showStatus("Lỗi tải lên. Vui lòng kiểm tra mã PIN", "error");
+        } else {
+          showStatus("Tải lên thành công!", "success");
+          $("picker").value = "";
+          lastEtag = null; // Force re-fetch sau upload
+          refresh();
+        }
+      } catch (e) {
+        console.error("Upload error:", e);
+        showStatus("Mất kết nối với máy chủ", "error");
+      } finally {
+        drop.classList.remove("opacity-50", "pointer-events-none");
+      }
+    }
+
+    // ─── PREVIEW MODAL ────────────────────────────────────────────────────────
+    async function openPreviewModal(encName, fileName) {
+      const ext = fileName.split('.').pop().toLowerCase();
+      const previewBody = $("preview-body");
+
+      $("preview-title").textContent = fileName;
+      $("preview-title").title = fileName;
+      $("preview-modal").classList.remove("hidden");
+
+      const downloadBtn = $("preview-download-btn");
+      downloadBtn.href = `/download/${encName}`;
+      downloadBtn.onclick = null;
+
+      previewBody.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-blue-500"><i class="ph ph-spinner animate-spin text-5xl mb-2"></i><p class="font-medium">Đang xử lý nội dung...</p></div>';
+
+      let actualUrl = `/download/${encName}`;
+      const pin = $("pin").value.trim();
+      const actualUrlWithPin = pin ? `${actualUrl}?pin=${encodeURIComponent(pin)}` : actualUrl;
+
+      if (isLocalPreview) {
+        const mockF = mockFiles.find(f => encodeURIComponent(f.name.normalize("NFC")) === encName);
+        if (mockF?.url) {
+          actualUrl = mockF.url;
+        } else {
+          previewBody.innerHTML = `<div class="text-center text-slate-500">
+          <i class="ph ph-eye-slash text-5xl mb-3 text-slate-300 block"></i>
+          <p class="font-medium text-slate-700">Không thể xem trước tệp ảo</p>
+          <p class="text-sm mt-1">Chỉ hỗ trợ xem trước tệp vừa kéo thả lên.</p>
         </div>`;
-        return;
+          return;
+        }
       }
-    }
 
-    const imgExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico'];
-    const videoExts = ['mp4', 'webm', 'ogg'];
-    const audioExts = ['mp3', 'wav', 'ogg'];
-    const textExts = ['txt', 'md', 'js', 'html', 'css', 'json', 'csv', 'xml', 'log'];
+      const fetchHeaders = headers();
 
-    if (ext === 'pdf') {
-      // Dựng PDF bằng thư viện pdf.js để không bị trình duyệt bắt ép download
-      if (!setupPdfWorker()) {
-         previewBody.innerHTML = `<p class="text-center text-red-500">Thư viện PDF chưa sẵn sàng, vui lòng thử lại sau.</p>`;
-         return;
-      }
-      
-      const pdfjsLib = window['pdfjs-dist/build/pdf'];
-      fetch(actualUrl).then(r => r.arrayBuffer()).then(ab => {
-        return pdfjsLib.getDocument({data: new Uint8Array(ab)}).promise;
-      }).then(pdf => {
-        previewBody.innerHTML = '<div id="pdf-container" class="flex flex-col gap-4 items-center w-full max-w-4xl pb-10"></div>';
-        const container = $("pdf-container");
-        
-        // Render 15 trang đầu tiên để tránh bị đơ trình duyệt
-        const maxPages = Math.min(pdf.numPages, 15);
-        for(let i=1; i<=maxPages; i++) {
-          pdf.getPage(i).then(page => {
-            const viewport = page.getViewport({scale: 1.5});
+      const imgExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico'];
+      const videoExts = ['mp4', 'webm', 'ogg'];
+      const audioExts = ['mp3', 'wav', 'm4a'];
+      const textExts = ['txt', 'md', 'js', 'ts', 'html', 'css', 'json', 'csv', 'xml', 'log', 'yaml', 'yml'];
+
+      if (ext === 'pdf') {
+        try {
+          const pdfjsLib = await setupPdfWorker();
+          const r = await fetch(actualUrl, { headers: fetchHeaders });
+          if (!r.ok) throw new Error('unauthorized');
+          const ab = await r.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(ab) }).promise;
+
+          previewBody.innerHTML = '<div id="pdf-container" class="flex flex-col gap-4 items-center w-full max-w-4xl pb-10"></div>';
+          const container = $("pdf-container");
+          const maxPages = Math.min(pdf.numPages, 15);
+
+          // Render mỗi trang tuần tự để tránh block main thread
+          for (let i = 1; i <= maxPages; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 1.5 });
             const canvas = document.createElement('canvas');
             canvas.className = 'w-full shadow-md bg-white rounded-lg';
             canvas.height = viewport.height;
             canvas.width = viewport.width;
             container.appendChild(canvas);
-            page.render({canvasContext: canvas.getContext('2d'), viewport: viewport});
-          });
+            // Dùng OffscreenCanvas nếu hỗ trợ để không block UI
+            page.render({ canvasContext: canvas.getContext('2d'), viewport });
+            // Nhường main thread mỗi 3 trang
+            if (i % 3 === 0) await new Promise(r => setTimeout(r, 0));
+          }
+
+          if (pdf.numPages > 15) {
+            container.insertAdjacentHTML('beforeend', `<p class="text-slate-500 py-4 font-medium text-sm bg-white px-6 rounded-full shadow-sm mt-4">Chỉ hiển thị 15 trang đầu tiên. Vui lòng tải về để đọc toàn bộ.</p>`);
+          }
+        } catch (err) {
+          const msg = err.message === 'unauthorized' ? 'Sai mã PIN hoặc chưa đăng nhập.' : 'Lỗi đọc tệp PDF. Có thể file bị hỏng.';
+          previewBody.innerHTML = `<div class="text-center text-red-500"><i class="ph ph-warning-circle text-4xl mb-2 block"></i><p>${msg}</p></div>`;
         }
-        if(pdf.numPages > 15) {
-           container.insertAdjacentHTML('beforeend', `<p class="text-slate-500 py-4 font-medium text-sm bg-white px-6 rounded-full shadow-sm mt-4">Chỉ hiển thị 15 trang đầu tiên. Vui lòng tải về để đọc toàn bộ.</p>`);
-        }
-      }).catch(err => {
-        previewBody.innerHTML = `<div class="text-center text-red-500"><i class="ph ph-warning-circle text-4xl mb-2"></i><p>Lỗi đọc tệp PDF. Có thể file bị hỏng.</p></div>`;
-      });
-      
-    } else if (ext === 'docx') {
-      // Dựng DOCX (Word) bằng thư viện mammoth
-      fetch(actualUrl).then(r => r.arrayBuffer()).then(ab => {
-        mammoth.convertToHtml({arrayBuffer: ab}).then(result => {
+
+      } else if (ext === 'docx') {
+        try {
+          await lazyLoad('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js');
+          const r = await fetch(actualUrl, { headers: fetchHeaders });
+          const ab = await r.arrayBuffer();
+          const result = await mammoth.convertToHtml({ arrayBuffer: ab });
           previewBody.innerHTML = `<div class="bg-white p-8 rounded-xl shadow-sm text-left w-full max-w-4xl preview-doc-content text-black">${result.value}</div>`;
-        }).catch(err => {
-          previewBody.innerHTML = `<div class="text-center text-red-500"><i class="ph ph-warning-circle text-4xl mb-2"></i><p>Không thể đọc định dạng Word này.</p></div>`;
-        });
-      });
-
-    } else if (['xlsx', 'xls', 'csv'].includes(ext)) {
-      // Dựng XLSX/CSV (Excel) bằng thư viện SheetJS
-      fetch(actualUrl).then(r => r.arrayBuffer()).then(ab => {
-        const wb = XLSX.read(ab, {type: 'array'});
-        const wsname = wb.SheetNames[0]; // Chỉ render Sheet đầu tiên
-        const ws = wb.Sheets[wsname];
-        const html = XLSX.utils.sheet_to_html(ws);
-        previewBody.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-sm w-full overflow-auto max-w-full preview-doc-content text-black">
-          <p class="text-sm font-semibold text-slate-500 mb-4 bg-slate-100 p-2 rounded inline-block">Trang tính: ${wsname}</p>
-          ${html}
-        </div>`;
-      }).catch(err => {
-        previewBody.innerHTML = `<div class="text-center text-red-500"><i class="ph ph-warning-circle text-4xl mb-2"></i><p>Không thể đọc định dạng Excel này.</p></div>`;
-      });
-
-    } else if (['doc', 'ppt', 'pptx'].includes(ext)) {
-      // Định dạng phức tạp không thể render client-side
-      previewBody.innerHTML = `<div class="text-center text-slate-500 max-w-sm">
-         <i class="ph ph-file-x text-6xl mb-4 text-slate-300"></i>
-         <p class="text-lg font-bold text-slate-700 mb-2">Định dạng phức tạp</p>
-         <p class="text-sm leading-relaxed">Trình duyệt không hỗ trợ xem trực tiếp định dạng văn bản cũ (<b>.${ext}</b>). Vui lòng tải về máy để xem nội dung.</p>
-      </div>`;
-
-    } else if (imgExts.includes(ext)) {
-      previewBody.innerHTML = `<img src="${actualUrl}" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-sm bg-white p-2" alt="Preview" />`;
-      
-    } else if (videoExts.includes(ext)) {
-      previewBody.innerHTML = `<video src="${actualUrl}" controls autoplay class="max-w-full max-h-[75vh] w-full rounded-lg shadow-lg bg-black"></video>`;
-      
-    } else if (audioExts.includes(ext)) {
-      previewBody.innerHTML = `<div class="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm w-full max-w-md"><i class="ph ph-music-notes text-6xl text-blue-500 mb-6 bg-blue-50 p-4 rounded-full"></i><audio src="${actualUrl}" controls autoplay class="w-full outline-none"></audio></div>`;
-      
-    } else if (textExts.includes(ext)) {
-      fetch(actualUrl)
-        .then(res => res.text())
-        .then(text => {
-          const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          previewBody.innerHTML = `<pre class="bg-slate-900 text-slate-50 p-6 rounded-xl text-sm overflow-auto h-full text-left w-full max-w-5xl whitespace-pre-wrap font-mono shadow-inner border border-slate-800"><code>${safeText}</code></pre>`;
-        })
-        .catch(() => {
-          previewBody.innerHTML = `<p class="text-center text-red-500 p-10">Lỗi khi tải nội dung văn bản.</p>`;
-        });
-        
-    } else {
-      previewBody.innerHTML = `<div class="text-center text-slate-500 max-w-sm">
-         <i class="ph ph-prohibit text-6xl mb-4 text-slate-300"></i>
-         <p class="text-lg font-bold text-slate-700 mb-2">Chưa hỗ trợ định dạng này</p>
-         <p class="text-sm leading-relaxed">Định dạng <b>.${ext}</b> chưa được hỗ trợ xem trước. Hãy tải về để mở bằng phần mềm phù hợp.</p>
-      </div>`;
-    }
-  }
-
-  function closePreviewModal() {
-    $("preview-modal").classList.add("hidden");
-    // Xóa nội dung bên trong để ngừng trình phát nhạc/video ngay lập tức
-    $("preview-body").innerHTML = ""; 
-  }
-
-  // Quản lý tải xuống các tệp đã chọn
-  async function downloadSelected() {
-    if (isLocalPreview) {
-      alert('Tính năng tải xuống hàng loạt chỉ hoạt động trên máy chủ thật.');
-      return;
-    }
-    
-    const filesToDownload = Array.from(selectedFiles);
-    if (filesToDownload.length === 0) return;
-
-    showStatus(`Đang bắt đầu tải xuống ${filesToDownload.length} tệp tin...`, "loading");
-
-    // Tạo các thẻ ẩn để kích hoạt tải xuống từng file một cách nhẹ nhàng
-    for (let i = 0; i < filesToDownload.length; i++) {
-      const encName = filesToDownload[i];
-      const link = document.createElement('a');
-      link.href = `/download/${encName}`;
-      link.target = '_blank';
-      link.download = decodeURIComponent(encName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Delay nhỏ để tránh bị trình duyệt chặn nhiều popup tải xuống cùng lúc
-      await new Promise(r => setTimeout(r, 300));
-    }
-    
-    showStatus(`Đã gửi yêu cầu tải xuống ${filesToDownload.length} tệp tin!`, "success");
-  }
-
-  // Quản lý Modal Xoá
-  function openDeleteModal(nameEnc, fileName) {
-    currentFilesToDelete = [{ encName: nameEnc, name: fileName }];
-    $("delete-message").textContent = "Bạn có chắc chắn muốn xoá tệp tin này không?";
-    $("delete-filename").textContent = fileName;
-    $("delete-filename").classList.remove("text-red-600");
-    $("delete-modal").classList.remove("hidden");
-  }
-
-  function openDeleteSelectedModal() {
-    currentFilesToDelete = Array.from(selectedFiles).map(encName => {
-      const f = currentFiles.find(file => encodeURIComponent(file.name.normalize("NFC")) === encName);
-      return { encName, name: f ? f.name.normalize("NFC") : decodeURIComponent(encName) };
-    });
-    $("delete-message").textContent = "Bạn có chắc chắn muốn xoá các tệp tin đã chọn?";
-    $("delete-filename").textContent = `${currentFilesToDelete.length} tệp tin`;
-    $("delete-filename").classList.remove("text-red-600");
-    $("delete-modal").classList.remove("hidden");
-  }
-
-  function openDeleteAllModal() {
-    currentFilesToDelete = currentFiles.map(f => ({ encName: encodeURIComponent(f.name.normalize("NFC")), name: f.name.normalize("NFC") }));
-    $("delete-message").textContent = "Bạn có chắc chắn muốn xoá TẤT CẢ tệp tin không? Hành động này không thể hoàn tác.";
-    $("delete-filename").textContent = `${currentFilesToDelete.length} tệp tin (Toàn bộ)`;
-    $("delete-filename").classList.add("text-red-600");
-    $("delete-modal").classList.remove("hidden");
-  }
-
-  function closeDeleteModal() {
-    currentFilesToDelete = [];
-    $("delete-modal").classList.add("hidden");
-  }
-
-  async function executeDelete(){
-    if(currentFilesToDelete.length === 0) return;
-    
-    const filesToDelete = [...currentFilesToDelete];
-    closeDeleteModal();
-    
-    if (filesToDelete.length === 1) {
-      showStatus("Đang xoá tệp tin...", "loading");
-    } else {
-      showStatus(`Đang xoá ${filesToDelete.length} tệp tin...`, "loading");
-    }
-    
-    let successCount = 0;
-    let failCount = 0;
-
-    try {
-      // Thực hiện gọi API xoá từng file song song để tăng tốc độ
-      await Promise.all(filesToDelete.map(async (file) => {
-        const res = await safeFetch(`/api/files/${file.encName}`, { method:"DELETE", headers: headers() });
-        if (res.ok) {
-          successCount++;
-          selectedFiles.delete(file.encName);
-        } else {
-          failCount++;
+        } catch {
+          previewBody.innerHTML = `<div class="text-center text-red-500"><i class="ph ph-warning-circle text-4xl mb-2 block"></i><p>Không thể đọc định dạng Word này.</p></div>`;
         }
-      }));
 
-      if (failCount > 0) {
-        showStatus(`Xoá thành công ${successCount} file. ${failCount} file bị lỗi (Sai mã PIN?)`, "error");
+      } else if (['xlsx', 'xls', 'csv'].includes(ext)) {
+        try {
+          await lazyLoad('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+          const r = await fetch(actualUrl, { headers: fetchHeaders });
+          const ab = await r.arrayBuffer();
+          const wb = XLSX.read(ab, { type: 'array' });
+          const wsname = wb.SheetNames[0];
+          const html = XLSX.utils.sheet_to_html(wb.Sheets[wsname]);
+          previewBody.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-sm w-full overflow-auto max-w-full preview-excel-content text-black">
+          <div class="flex items-center gap-2 mb-4 bg-slate-50 border border-slate-200 p-2.5 rounded-lg w-max">
+            <i class="ph ph-table text-green-600 text-lg"></i>
+            <span class="text-sm font-semibold text-slate-700">Trang tính: ${wsname}</span>
+          </div>
+          ${html}</div>`;
+        } catch {
+          previewBody.innerHTML = `<div class="text-center text-red-500"><i class="ph ph-warning-circle text-4xl mb-2 block"></i><p>Không thể đọc định dạng Excel này.</p></div>`;
+        }
+
+      } else if (['doc', 'ppt', 'pptx'].includes(ext)) {
+        previewBody.innerHTML = `<div class="text-center text-slate-500 max-w-sm">
+        <i class="ph ph-file-x text-6xl mb-4 text-slate-300 block"></i>
+        <p class="text-lg font-bold text-slate-700 mb-2">Định dạng phức tạp</p>
+        <p class="text-sm leading-relaxed">Trình duyệt không hỗ trợ xem <b>.${ext}</b>. Vui lòng tải về máy.</p>
+      </div>`;
+
+      } else if (imgExts.includes(ext)) {
+        previewBody.innerHTML = `<img src="${actualUrlWithPin}" loading="lazy" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-sm bg-white p-2" alt="Preview" />`;
+
+      } else if (videoExts.includes(ext)) {
+        previewBody.innerHTML = `<video src="${actualUrlWithPin}" controls autoplay class="max-w-full max-h-[75vh] w-full rounded-lg shadow-lg bg-black"></video>`;
+
+      } else if (audioExts.includes(ext)) {
+        previewBody.innerHTML = `<div class="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm w-full max-w-md">
+        <i class="ph ph-music-notes text-6xl text-blue-500 mb-6 bg-blue-50 p-4 rounded-full block"></i>
+        <audio src="${actualUrlWithPin}" controls autoplay class="w-full outline-none"></audio>
+      </div>`;
+
+      } else if (textExts.includes(ext)) {
+        try {
+          const r = await fetch(actualUrl, { headers: fetchHeaders });
+          const text = await r.text();
+          const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          previewBody.innerHTML = `<pre class="bg-slate-900 text-slate-50 p-6 rounded-xl text-sm overflow-auto h-full text-left w-full max-w-5xl whitespace-pre-wrap font-mono shadow-inner border border-slate-800"><code>${safe}</code></pre>`;
+        } catch {
+          previewBody.innerHTML = `<p class="text-center text-red-500 p-10">Lỗi khi tải nội dung văn bản.</p>`;
+        }
+
       } else {
-        showStatus(`Đã xoá ${successCount} tệp tin thành công`, "success");
+        previewBody.innerHTML = `<div class="text-center text-slate-500 max-w-sm">
+        <i class="ph ph-prohibit text-6xl mb-4 text-slate-300 block"></i>
+        <p class="text-lg font-bold text-slate-700 mb-2">Chưa hỗ trợ định dạng này</p>
+        <p class="text-sm leading-relaxed">Định dạng <b>.${ext}</b> chưa được hỗ trợ. Hãy tải về.</p>
+      </div>`;
       }
-      
-      refresh();
-    } catch(e) {
-      console.error("Lỗi Xóa:", e);
-      showStatus("Mất kết nối với máy chủ", "error");
     }
-  }
 
-  const drop = $("drop");
-  drop.addEventListener("dragover", e => { 
-    e.preventDefault(); 
-    if(drop.classList.contains("pointer-events-none")) return;
-    drop.classList.add("border-blue-400", "bg-blue-50");
-    drop.classList.remove("border-slate-300", "bg-slate-50");
-  });
-  drop.addEventListener("dragleave", () => {
-    if(drop.classList.contains("pointer-events-none")) return;
-    drop.classList.remove("border-blue-400", "bg-blue-50");
-    drop.classList.add("border-slate-300", "bg-slate-50");
-  });
-  drop.addEventListener("drop", e => {
-    e.preventDefault(); 
-    if(drop.classList.contains("pointer-events-none")) return;
-    drop.classList.remove("border-blue-400", "bg-blue-50");
-    drop.classList.add("border-slate-300", "bg-slate-50");
-    $("picker").files = e.dataTransfer.files;
-    upload(); 
-  });
-
-  let es = null;
-  let pollTimer = null;
-
-  function startRealtime(){
-    if (isLocalPreview) {
-      startPolling();
-      return;
+    function closePreviewModal() {
+      $("preview-modal").classList.add("hidden");
+      $("preview-body").innerHTML = "";
     }
-    
-    try {
-      const pin = $("pin").value.trim();
-      const url = pin ? `/events?pin=${encodeURIComponent(pin)}` : `/events`;
-      es = new EventSource(url);
 
-      es.addEventListener("changed", () => {
-        refresh();
+    // ─── DOWNLOAD SELECTED ────────────────────────────────────────────────────
+    async function downloadSelected() {
+      const list = Array.from(selectedFiles);
+      if (!list.length) return;
+      showStatus(`Đang bắt đầu tải xuống ${list.length} tệp...`, "loading");
+      for (const encName of list) {
+        const a = document.createElement('a');
+        a.href = `/download/${encName}`;
+        a.target = '_blank';
+        a.download = decodeURIComponent(encName);
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        await new Promise(r => setTimeout(r, 300));
+      }
+      showStatus(`Đã gửi yêu cầu tải ${list.length} tệp!`, "success");
+    }
+
+    // ─── DELETE MODALS ────────────────────────────────────────────────────────
+    function openDeleteModal(encName, fileName) {
+      currentFilesToDelete = [{ encName, name: fileName }];
+      $("delete-message").textContent = "Bạn có chắc chắn muốn xoá tệp tin này không?";
+      $("delete-filename").textContent = fileName;
+      $("delete-filename").classList.remove("text-red-600");
+      $("delete-modal").classList.remove("hidden");
+    }
+    function openDeleteSelectedModal() {
+      currentFilesToDelete = Array.from(selectedFiles).map(encName => {
+        const f = currentFiles.find(f => encodeURIComponent(f.name.normalize("NFC")) === encName);
+        return { encName, name: f ? f.name.normalize("NFC") : decodeURIComponent(encName) };
       });
-
-      es.addEventListener("hello", () => {});
-
-      es.onerror = () => {
-        try { es.close(); } catch {}
-        es = null;
-        startPolling();
-      };
-    } catch {
-      startPolling();
+      $("delete-message").textContent = "Bạn có chắc chắn muốn xoá các tệp tin đã chọn?";
+      $("delete-filename").textContent = `${currentFilesToDelete.length} tệp tin`;
+      $("delete-filename").classList.remove("text-red-600");
+      $("delete-modal").classList.remove("hidden");
     }
-  }
+    function openDeleteAllModal() {
+      currentFilesToDelete = currentFiles.map(f => ({ encName: encodeURIComponent(f.name.normalize("NFC")), name: f.name.normalize("NFC") }));
+      $("delete-message").textContent = "Bạn có chắc chắn muốn xoá TẤT CẢ tệp tin không? Hành động này không thể hoàn tác.";
+      $("delete-filename").textContent = `${currentFilesToDelete.length} tệp tin (Toàn bộ)`;
+      $("delete-filename").classList.add("text-red-600");
+      $("delete-modal").classList.remove("hidden");
+    }
+    function closeDeleteModal() {
+      currentFilesToDelete = [];
+      $("delete-modal").classList.add("hidden");
+    }
 
-  function startPolling(){
-    if (pollTimer) return;
-    pollTimer = setInterval(() => refresh(), 3000);
-  }
-  
-  refresh();
-  startRealtime();
-</script>
+    async function executeDelete() {
+      if (!currentFilesToDelete.length) return;
+      const filesToDelete = [...currentFilesToDelete];
+      closeDeleteModal();
+
+      showStatus(filesToDelete.length === 1 ? "Đang xoá tệp tin..." : `Đang xoá ${filesToDelete.length} tệp tin...`, "loading");
+
+      let successCount = 0, failCount = 0;
+      try {
+        await Promise.all(filesToDelete.map(async (file) => {
+          const res = await safeFetch(`/api/files/${file.encName}`, { method: "DELETE", headers: headers() });
+          if (res.ok) { successCount++; selectedFiles.delete(file.encName); }
+          else failCount++;
+        }));
+
+        showStatus(
+          failCount > 0
+            ? `Xoá thành công ${successCount}. ${failCount} lỗi (Sai mã PIN?)`
+            : `Đã xoá ${successCount} tệp tin thành công`,
+          failCount > 0 ? "error" : "success"
+        );
+
+        lastEtag = null; // Buộc re-fetch
+        refresh();
+      } catch (e) {
+        console.error("Delete error:", e);
+        showStatus("Mất kết nối với máy chủ", "error");
+      }
+    }
+
+    // ─── DRAG & DROP (passive listeners) ─────────────────────────────────────
+    const dropEl = $("drop");
+    dropEl.addEventListener("dragover", e => {
+      e.preventDefault();
+      if (dropEl.classList.contains("pointer-events-none")) return;
+      dropEl.classList.add("border-blue-400", "bg-blue-50");
+      dropEl.classList.remove("border-slate-300", "bg-slate-50");
+    }, { passive: false });
+    dropEl.addEventListener("dragleave", () => {
+      if (dropEl.classList.contains("pointer-events-none")) return;
+      dropEl.classList.remove("border-blue-400", "bg-blue-50");
+      dropEl.classList.add("border-slate-300", "bg-slate-50");
+    }, { passive: true });
+    dropEl.addEventListener("drop", e => {
+      e.preventDefault();
+      if (dropEl.classList.contains("pointer-events-none")) return;
+      dropEl.classList.remove("border-blue-400", "bg-blue-50");
+      dropEl.classList.add("border-slate-300", "bg-slate-50");
+      $("picker").files = e.dataTransfer.files;
+      upload();
+    }, { passive: false });
+
+    // ─── REALTIME (SSE + fallback polling) ───────────────────────────────────
+    let es = null;
+    let pollTimer = null;
+
+    function startRealtime() {
+      if (isLocalPreview) { startPolling(); return; }
+
+      try {
+        const pin = $("pin").value.trim();
+        const url = pin ? `/events?pin=${encodeURIComponent(pin)}` : `/events`;
+        es = new EventSource(url);
+
+        es.addEventListener("changed", () => debouncedRefresh());
+        es.addEventListener("hello", () => { });
+
+        es.onerror = () => {
+          try { es.close(); } catch { }
+          es = null;
+          startPolling();
+        };
+      } catch {
+        startPolling();
+      }
+    }
+
+    function startPolling() {
+      if (pollTimer) return;
+      pollTimer = setInterval(() => debouncedRefresh(), 5000); // 5s thay vì 3s để nhẹ hơn
+    }
+
+    // ─── VISIBILITY CHANGE — dừng polling khi tab ẩn ─────────────────────────
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        // Tab ẩn: tạm dừng polling, đóng SSE để tiết kiệm tài nguyên
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        if (es) { try { es.close(); } catch { } es = null; }
+      } else {
+        // Tab hiện trở lại: refresh ngay và khởi động lại realtime
+        lastEtag = null;
+        refresh();
+        startRealtime();
+      }
+    }, { passive: true });
+
+    // ─── INIT ─────────────────────────────────────────────────────────────────
+    refresh();
+    startRealtime();
+  </script>
 </body>
+
 </html>
