@@ -16,6 +16,8 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 const PIN = (process.env.PIN ?? "8081").trim();
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 
+// Biến lưu trữ văn bản Clipboard chung (lưu trên RAM)
+let sharedClipboard = "";
 // Tạo thư mục uploads nếu chưa tồn tại
 await fsPromises.mkdir(UPLOAD_DIR, { recursive: true });
 
@@ -28,7 +30,14 @@ app.set('trust proxy', true);
 // ─── MIDDLEWARE ────────────────────────────────────────────────────────────────
 
 // Gzip/Brotli nén tất cả response text (JSON, HTML, CSS, JS)
-app.use(compression({ level: 6 }));
+// Bỏ qua /download/ để tránh làm hỏng binary content (PDF, ảnh, ZIP...)
+app.use(compression({
+  level: 6,
+  filter: (req, res) => {
+    if (req.path.startsWith('/download/')) return false;
+    return compression.filter(req, res);
+  }
+}));
 
 // Parse JSON body (tăng limit để tránh 413 khi gửi metadata lớn)
 app.use(express.json({ limit: "10gb" }));
@@ -109,8 +118,18 @@ function getLocalIPv4() {
 app.use((req, res, next) => {
   if (!PIN) return next();
   // Cho phép trang index load không cần PIN để hiện UI nhập PIN
-  if (req.method === "GET" && (req.path === "/" || req.path.startsWith("/index")))
+  // Route /download/ và /api/clipboard có middleware/check riêng biệt không bị ảnh hưởng tại đây
+  if (req.method === "GET" && (
+    req.path === "/" ||
+    req.path.startsWith("/index") ||
+    req.path.startsWith("/download/") ||
+    req.path.startsWith("/api/clipboard")
+  ))
     return next();
+
+  if (req.method === "POST" && req.path.startsWith("/api/clipboard")) {
+    return next();
+  }
 
   const pin = req.headers["x-pin"] || req.query.pin;
   if (pin !== PIN)
@@ -199,6 +218,36 @@ app.get("/api/files", async (req, res) => {
   }
 });
 
+// ─── CLIPBOARD API ────────────────────────────────────────────────────────────
+
+// Trả về văn bản clipbord (cần check PIN thủ công)
+app.get("/api/clipboard", (req, res) => {
+  if (PIN) {
+    const pin = req.headers["x-pin"] || req.query.pin;
+    if (pin !== PIN) return res.status(401).json({ ok: false, error: "Unauthorized (PIN)" });
+  }
+  res.json({ ok: true, text: sharedClipboard });
+});
+
+// Cập nhật văn bản clipboard và gửi SSE
+app.post("/api/clipboard", (req, res) => {
+  if (PIN) {
+    const pin = req.headers["x-pin"] || req.query.pin;
+    if (pin !== PIN) return res.status(401).json({ ok: false, error: "Unauthorized (PIN)" });
+  }
+
+  const newText = req.body?.text || "";
+  if (typeof newText !== "string") {
+    return res.status(400).json({ ok: false, error: "Invalid text" });
+  }
+
+  sharedClipboard = newText;
+  res.json({ ok: true });
+
+  // Phát tín hiệu SSE cho tất cả client
+  sseSend("clipboard", { text: sharedClipboard, at: Date.now() });
+});
+
 app.post("/api/upload", upload.array("files"), async (req, res) => {
   try {
     const uploaded = (req.files ?? []).map((f) => f.filename);
@@ -231,6 +280,10 @@ app.get("/download/:name", (req, res) => {
     if (!match) return res.status(404).send("Not found");
     filePath = path.join(UPLOAD_DIR, match);
   }
+
+  // Tắt compression cho file binary (PDF, ZIP, ảnh...) để tránh pdf.js đọc sai
+  // compression middleware tôn trọng header này
+  res.setHeader("Cache-Control", "no-transform");
 
   // Thiết lập Content-Disposition với UTF-8 encoding đúng chuẩn RFC 5987
   const dispName = encodeURIComponent(path.basename(filePath));
