@@ -698,36 +698,53 @@
       return map[ext] || { icon: "ph-file", color: "text-slate-500", bg: "bg-slate-100" };
     }
 
-    // ─── SELECTION UI ─────────────────────────────────────────────────────────
+    // ─── SELECTION UI ─────────────────────────────────────────────────
     function updateSelectionUI() {
       const hasSelected = selectedFiles.size > 0;
-      const countEl = $("selected-count");
 
+      // Toolbar bulk actions
       if (hasSelected) {
         $("table-actions").classList.remove("hidden");
         $("table-actions").classList.add("flex");
-        countEl.textContent = selectedFiles.size;
+        $("selected-count").textContent = selectedFiles.size;
       } else {
         $("table-actions").classList.add("hidden");
         $("table-actions").classList.remove("flex");
       }
 
+      // Desktop: select-all checkbox
       const cbAll = $("cb-select-all");
       if (cbAll) cbAll.checked = currentFiles.length > 0 && selectedFiles.size === currentFiles.length;
 
-      document.querySelectorAll('.file-cb').forEach(cb => {
-        cb.checked = selectedFiles.has(cb.value);
-        // Highlight row
-        const row = cb.closest('.file-row');
-        if (row) {
-          if (cb.checked) row.classList.add('bg-blue-50/50');
-          else row.classList.remove('bg-blue-50/50');
+      // Update every rendered row: desktop checkbox + mobile circle
+      document.querySelectorAll('.file-row[data-enc]').forEach(row => {
+        const enc = row.dataset.enc;
+        const isChecked = selectedFiles.has(enc);
+
+        // Row highlight
+        if (isChecked) row.classList.add('bg-blue-50/50');
+        else row.classList.remove('bg-blue-50/50');
+
+        // Desktop checkbox
+        const cb = row.querySelector('.file-cb');
+        if (cb) cb.checked = isChecked;
+
+        // Mobile circle indicator
+        const circle = row.querySelector('.mobile-circle');
+        if (circle) {
+          if (isChecked) {
+            circle.className = 'mobile-circle w-6 h-6 rounded-full border-2 border-blue-500 bg-blue-500 flex items-center justify-center transition-all';
+            circle.innerHTML = '<i class="ph-bold ph-check text-white text-xs"></i>';
+          } else {
+            circle.className = 'mobile-circle w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center transition-all';
+            circle.innerHTML = '';
+          }
         }
       });
     }
 
     function toggleSelect(encName, event) {
-      if (event) event.stopPropagation(); // Ngăn click lan ra row
+      if (event) event.stopPropagation();
       selectedFiles.has(encName) ? selectedFiles.delete(encName) : selectedFiles.add(encName);
       updateSelectionUI();
     }
@@ -741,31 +758,32 @@
       updateSelectionUI();
     }
 
-    // ─── BUILD ROW ───────────────────────────────────────────────────────────
+    // ─── BUILD ROW ───────────────────────────────────────────────────
     function buildRow(f) {
       const fileName = f.name.normalize("NFC");
       const props = fileProps(fileName);
       const encName = encodeURIComponent(fileName);
-      const checked = selectedFiles.has(encName) ? 'checked' : '';
+      const isChecked = selectedFiles.has(encName);
 
       const div = document.createElement("div");
       div.dataset.enc = encName;
-      div.className = `file-row group flex items-center p-3 md:px-6 md:py-4 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 last:border-0 ${checked ? 'bg-blue-50/50' : ''}`;
-      // Click toàn bộ row để toggle chọn trên mobile (thuận tiện hơn) hoặc mở file
+      div.className = `file-row group flex items-center p-3 md:px-6 md:py-4 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 last:border-0 ${isChecked ? 'bg-blue-50/50' : ''}`;
+
+      // Mobile: tap row = toggle select. Desktop: tap row = preview.
       div.onclick = (e) => {
         if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input')) return;
         if (window.innerWidth < 768) {
-          openPreviewModal(encName, fileName.replace(/'/g, "\\'")); // Mobile click row -> preview
+          toggleSelect(encName, e);
         } else {
-          // Desktop click row -> tùy chọn
-          openPreviewModal(encName, fileName.replace(/'/g, "\\'"));
+          openPreviewModal(encName, fileName);
         }
       };
 
       div.innerHTML = `
-        <!-- Checkbox -->
+        <!-- Checkbox (Desktop only) -->
         <div class="hidden md:flex w-10 justify-center shrink-0">
-          <input type="checkbox" class="file-cb w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" value="${encName}" ${checked} onchange="toggleSelect('${encName}', event)">
+          <input type="checkbox" class="file-cb w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            value="${encName}" ${isChecked ? 'checked' : ''} onchange="toggleSelect('${encName}', event)">
         </div>
 
         <!-- Icon & Info -->
@@ -782,26 +800,32 @@
           </div>
         </div>
 
-        <!-- Kích thước (Desktop) -->
-        <div class="hidden md:block w-24 text-right text-slate-500 text-sm font-medium">
-          ${fmt(f.size)}
-        </div>
+        <!-- Size (Desktop) -->
+        <div class="hidden md:block w-24 text-right text-slate-500 text-sm font-medium">${fmt(f.size)}</div>
 
-        <!-- Thao tác (Icon buttons) -->
+        <!-- Actions -->
         <div class="flex items-center gap-1 shrink-0 ml-2 md:w-32 md:justify-center">
-          <!-- Mobile Checkbox thay vì nút xóa để dễ chọn nhiều -->
-          <div class="md:hidden flex items-center justify-center w-10 h-10" onclick="toggleSelect('${encName}', event); event.stopPropagation();">
-            <div class="w-6 h-6 rounded-full border-2 ${checked ? 'border-blue-500 bg-blue-500' : 'border-slate-300 bg-white'} flex items-center justify-center transition-colors">
-              ${checked ? '<i class="ph-bold ph-check text-white text-xs"></i>' : ''}
+
+          <!-- Mobile: circle tick (luon hien), tap = toggle select -->
+          <div class="md:hidden flex items-center justify-center w-10 h-10" onclick="toggleSelect('${encName}', event)">
+            <div class="mobile-circle w-6 h-6 rounded-full border-2 ${isChecked ? 'border-blue-500 bg-blue-500' : 'border-slate-300 bg-white'} flex items-center justify-center transition-all">
+              ${isChecked ? '<i class="ph-bold ph-check text-white text-xs"></i>' : ''}
             </div>
           </div>
-          
-          <!-- Desktop Actions -->
-          <button onclick="openDeleteModal('${encName}','${fileName.replace(/'/g, "\\'")}')" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Xóa">
-             <i class="ph-fill ph-trash text-lg"></i>
+
+          <!-- Mobile: preview button (eye icon, only shows when NOT in select mode) -->
+          <button class="md:hidden mobile-preview-btn flex items-center justify-center w-10 h-10 text-slate-300 active:scale-90 transition-transform"
+            onclick="openPreviewModal('${encName}', '${fileName.replace(/'/g, "\\'")}')"
+            title="Xem tr\u01b0\u1edbc">
+            <i class="ph ph-eye text-lg"></i>
           </button>
-          <a href="/download/${encName}" target="_blank" onclick="event.stopPropagation()" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Tải xuống">
-             <i class="ph-bold ph-download-simple text-lg"></i>
+
+          <!-- Desktop: delete + download -->
+          <button onclick="openDeleteModal('${encName}','${fileName.replace(/'/g, "\\'")}')" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="X\u00f3a">
+            <i class="ph-fill ph-trash text-lg"></i>
+          </button>
+          <a href="/download/${encName}" target="_blank" onclick="event.stopPropagation()" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="T\u1ea3i xu\u1ed1ng">
+            <i class="ph-bold ph-download-simple text-lg"></i>
           </a>
         </div>
       `;
@@ -817,25 +841,17 @@
           <div class="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-4">
             <i class="ph-fill ph-folder-open text-5xl text-blue-200"></i>
           </div>
-          <p class="font-bold text-slate-700 text-lg">Thư mục trống</p>
-          <p class="text-sm text-slate-500 mt-1">Bấm nút (+) bên dưới để thêm file</p>
+          <p class="font-bold text-slate-700 text-lg">Th\u01b0 m\u1ee5c tr\u1ed1ng</p>
+          <p class="text-sm text-slate-500 mt-1">B\u1ea5m n\u00fat (+) b\u00ean d\u01b0\u1edbi \u0111\u1ec3 th\u00eam file</p>
         </div>`;
         return;
       }
 
-      const newKeys = new Set(files.map(f => encodeURIComponent(f.name.normalize("NFC"))));
-      tb.querySelectorAll("div:not([data-enc])").forEach(div => div.remove());
-      tb.querySelectorAll("div[data-enc]").forEach(div => { if (!newKeys.has(div.dataset.enc)) div.remove(); });
-
-      const existingMap = new Map();
-      tb.querySelectorAll("div[data-enc]").forEach(div => existingMap.set(div.dataset.enc, div));
-
+      // Full rebuild on each render – simple & always correct
       const frag = document.createDocumentFragment();
-      for (const f of files) {
-        const encName = encodeURIComponent(f.name.normalize("NFC"));
-        if (!existingMap.has(encName)) frag.appendChild(buildRow(f));
-      }
-      if (frag.childNodes.length > 0) tb.prepend(frag); // Thêm lên đầu
+      for (const f of files) frag.appendChild(buildRow(f));
+      tb.innerHTML = '';
+      tb.appendChild(frag);
     }
 
     // ─── REFRESH ─────────────────────────────────────────────────────────────
@@ -943,11 +959,11 @@
         });
         if (res.ok) {
           const data = await res.json();
-          // Cập nhật lại ID thật nếu cần, tạm thời load lại từ server
-          if (isLocalPreview) {
-            // Mock update
-            const item = clipboardHistory.find(i => i.id === tempId);
-            if (item) item.id = data.item.id;
+          // Cập nhật ID thật từ server (cả server thật lẫn local preview)
+          const item = clipboardHistory.find(i => i.id === tempId);
+          if (item && data.item?.id) {
+            item.id = data.item.id;
+            renderClipboardList(); // Re-render để button xóa dùng đúng ID
           }
         } else {
           showStatus("Lỗi gửi tin", "error");
@@ -977,7 +993,23 @@
     }
 
     async function deleteClipboardItem(id, btn) {
-      if (!confirm('Xóa tin nhắn này?')) return;
+      // Inline confirm: lần 1 bấm → hiện xác nhận, lần 2 → xóa thật
+      if (!btn._confirming) {
+        btn._confirming = true;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="ph-bold ph-check text-red-500"></i> Chắc?';
+        btn.classList.add('text-red-600');
+        setTimeout(() => {
+          if (btn._confirming) {
+            btn._confirming = false;
+            btn.innerHTML = orig;
+            btn.classList.remove('text-red-600');
+          }
+        }, 2500);
+        return;
+      }
+      btn._confirming = false;
+
       try {
         const res = await safeFetch(`/api/clipboard/${id}`, { method: 'DELETE', headers: headers() });
         if (res.ok) {
