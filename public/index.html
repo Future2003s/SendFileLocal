@@ -243,28 +243,30 @@
           <i class="ph ph-clipboard-text text-xl text-blue-500"></i>
           Clipboard chung
         </h2>
-        <div class="flex items-center gap-2">
-          <button id="btn-copy-clipboard" onclick="copyClipboard()"
-            class="text-xs font-medium bg-slate-50 text-slate-600 hover:bg-slate-100 py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors border border-slate-200"
-            title="Sao chép vào máy">
-            <i class="ph ph-copy text-sm"></i> <span>Copy</span>
-          </button>
+      </div>
+
+      <!-- Ô Nhập liệu -->
+      <div class="relative w-full mb-6">
+        <textarea id="shared-clipboard"
+          class="w-full min-h-[100px] max-h-[300px] p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono leading-relaxed resize-y placeholder:text-slate-400"
+          placeholder="Dán nội dung vào đây để chia sẻ..." onkeydown="handleClipboardKeydown(event)"
+          oninput="handleClipboardInput()"></textarea>
+
+        <div class="absolute bottom-3 right-3 flex items-center gap-2">
           <button id="btn-save-clipboard" onclick="saveClipboard()"
             class="text-xs font-medium bg-blue-500 text-white hover:bg-blue-600 py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors border border-blue-600 shadow-sm"
-            title="Lưu (Ctrl+S)">
-            <i class="ph ph-floppy-disk text-sm"></i> <span>Lưu & Gửi</span>
+            title="Gửi (Ctrl+Enter hoặc Cmd+Enter)">
+            <i class="ph ph-paper-plane-right text-sm"></i> <span>Gửi</span>
           </button>
         </div>
       </div>
-      <div class="relative w-full">
-        <textarea id="shared-clipboard"
-          class="w-full min-h-[140px] max-h-[500px] p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-mono leading-relaxed resize-y placeholder:text-slate-400"
-          placeholder="Biết dán gì bây giờ..." onkeydown="handleClipboardKeydown(event)"
-          oninput="handleClipboardInput()"></textarea>
-        <!-- Indicator trạng thái lưu -->
-        <div id="clipboard-status"
-          class="absolute bottom-3 right-3 text-xs text-slate-400 flex items-center gap-1 opacity-0 transition-opacity">
-          <i class="ph ph-check-circle text-green-500"></i> Đã lưu
+
+      <!-- Danh sách lịch sử -->
+      <div class="flex flex-col gap-3">
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Lịch sử gần đây</h3>
+        <div id="clipboard-list" class="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 -mr-2">
+          <!-- Render thông qua JS -->
+          <div class="text-center py-6 text-slate-400 text-sm italic">Đang tải dữ liệu...</div>
         </div>
       </div>
     </div>
@@ -673,21 +675,56 @@
     }
 
     // ─── CLIPBOARD LOGIC ─────────────────────────────────────────────────────
-    let _clipboardTimer = null;
-    let _lastClipboardText = "";
+    let clipboardHistory = [];
+
+    // Render danh sách Clipboard
+    function renderClipboardList() {
+      const container = $("clipboard-list");
+
+      if (!clipboardHistory || clipboardHistory.length === 0) {
+        container.innerHTML = `<div class="text-center py-6 text-slate-400 text-sm italic">Chưa có nội dung nào được chia sẻ</div>`;
+        return;
+      }
+
+      container.innerHTML = clipboardHistory.map((item, index) => {
+        // Tính toán thời gian tương đối
+        const diff = Math.floor((Date.now() - item.timestamp) / 1000);
+        let timeStr = "Vừa xong";
+        if (diff > 86400) timeStr = `${Math.floor(diff / 86400)} ngày trước`;
+        else if (diff > 3600) timeStr = `${Math.floor(diff / 3600)} giờ trước`;
+        else if (diff > 60) timeStr = `${Math.floor(diff / 60)} phút trước`;
+
+        const escText = item.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // Giữ nguyên dòng (newline) bằng cách dùng pre-wrap
+
+        return `
+          <div id="cb-item-${item.id}" class="group bg-white rounded-xl border border-slate-200 p-3 shadow-sm hover:shadow-md transition-all ${index === 0 ? 'clipboard-item-enter' : ''}">
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <span class="text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">${timeStr}</span>
+              <button onclick="deleteClipboard('${item.id}')" class="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors opacity-0 group-hover:opacity-100" title="Xóa">
+                <i class="ph ph-trash text-sm"></i>
+              </button>
+            </div>
+            <div class="text-sm text-slate-700 font-mono whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto pr-1 mb-3 scrollbar-thin">${escText}</div>
+            <div class="flex justify-end border-t border-slate-100 pt-2 mt-2">
+              <button onclick="copyClipboardItem('${item.id}', this)" class="text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                <i class="ph ph-copy"></i>
+                <span>Copy</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
 
     async function fetchClipboard() {
       try {
         const res = await safeFetch("/api/clipboard", { headers: headers() });
         if (!res.ok) return;
         const data = await res.json();
-        if (data.ok && data.text !== undefined) {
-          const textarea = $("shared-clipboard");
-          // Chỉ update nếu user không đang gõ (tránh nhảy chữ)
-          if (document.activeElement !== textarea || textarea.value === _lastClipboardText) {
-            textarea.value = data.text;
-            _lastClipboardText = data.text;
-          }
+        if (data.ok && Array.isArray(data.history)) {
+          clipboardHistory = data.history;
+          renderClipboardList();
         }
       } catch (e) {
         console.error("Fetch clipboard error", e);
@@ -696,11 +733,14 @@
 
     async function saveClipboard() {
       const btn = $("btn-save-clipboard");
-      const statusIcon = $("clipboard-status");
       const textarea = $("shared-clipboard");
-      const text = textarea.value;
+      const text = textarea.value.trim();
+
+      if (!text) return; // Không lưu chuỗi rỗng
 
       btn.classList.add("opacity-50", "pointer-events-none");
+      btn.innerHTML = `<i class="ph ph-spinner animate-spin text-sm"></i> <span>Gửi</span>`;
+
       try {
         const res = await safeFetch("/api/clipboard", {
           method: "POST",
@@ -708,10 +748,17 @@
           body: JSON.stringify({ text })
         });
         if (res.ok) {
-          _lastClipboardText = text;
-          // Hiển thị chữ "Đã lưu" nhỏ ở góc
-          statusIcon.classList.remove("opacity-0");
-          setTimeout(() => statusIcon.classList.add("opacity-0"), 2000);
+          // Xóa trắng input ngay lập tức
+          textarea.value = "";
+          handleClipboardInput(); // Reset kích thước textarea
+
+          const data = await res.json();
+          if (data.item) {
+            // Cập nhật mảng local và render tạm thời để trông mượt mà
+            clipboardHistory.unshift(data.item);
+            if (clipboardHistory.length > 50) clipboardHistory.pop();
+            renderClipboardList();
+          }
         } else {
           showStatus("Lỗi lưu Clipboard (Sai PIN?)", "error");
         }
@@ -719,53 +766,87 @@
         showStatus("Mất kết nối server", "error");
       } finally {
         btn.classList.remove("opacity-50", "pointer-events-none");
+        btn.innerHTML = `<i class="ph ph-paper-plane-right text-sm"></i> <span>Gửi</span>`;
       }
     }
 
-    async function copyClipboard() {
-      const textarea = $("shared-clipboard");
-      const btn = $("btn-copy-clipboard");
+    async function deleteClipboard(id) {
+      if (!confirm("Bạn có chắc chắn muốn xóa tin này khỏi lịch sử hiện tại không? Mọi người đều sẽ bị xóa lịch sử của đoạn này.")) return;
+
+      try {
+        // Tạm thời xóa trên UI cho cảm giác mượt
+        const el = $(`cb-item-${id}`);
+        if (el) {
+          el.classList.add("clipboard-item-leave");
+          setTimeout(() => {
+            clipboardHistory = clipboardHistory.filter(item => item.id !== id);
+            renderClipboardList();
+          }, 200);
+        }
+
+        await safeFetch(`/api/clipboard/${id}`, {
+          method: "DELETE",
+          headers: headers()
+        });
+      } catch (e) {
+        console.error("Delete clipboard error", e);
+      }
+    }
+
+    async function copyClipboardItem(id, btn) {
+      const item = clipboardHistory.find(x => x.id === id);
+      if (!item) return;
+
       const icon = btn.querySelector("i");
       const span = btn.querySelector("span");
 
-      if (!textarea.value) return;
-
       try {
-        await navigator.clipboard.writeText(textarea.value);
+        await navigator.clipboard.writeText(item.text);
 
-        // UI feedback nhỏ gọn
+        // UI feedback cho nút Card cụ thể
         const oldClass = icon.className;
         icon.className = "ph ph-check text-green-600 font-bold";
         span.textContent = "Đã chép";
-        btn.classList.add("animate-copy", "bg-green-50", "border-green-200");
+        btn.classList.add("bg-green-100", "text-green-700");
+        btn.classList.remove("bg-blue-50", "text-blue-600");
 
         setTimeout(() => {
           icon.className = oldClass;
           span.textContent = "Copy";
-          btn.classList.remove("animate-copy", "bg-green-50", "border-green-200");
+          btn.classList.remove("bg-green-100", "text-green-700");
+          btn.classList.add("bg-blue-50", "text-blue-600");
         }, 1500);
       } catch (e) {
-        // Fallback cho browser không support clipboard API
-        textarea.select();
+        // Fallback for older browsers
+        const t = document.createElement("textarea");
+        t.value = item.text;
+        t.style.position = "fixed";
+        t.style.opacity = "0";
+        document.body.appendChild(t);
+        t.select();
         document.execCommand("copy");
+        document.body.removeChild(t);
+
         span.textContent = "Đã chép";
         setTimeout(() => span.textContent = "Copy", 1500);
       }
     }
 
     function handleClipboardKeydown(e) {
-      // Ctrl+S / Cmd+S để lưu nhanh
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        saveClipboard();
+      // Nhấn Enter không Shift, hoặc Ctrl+Enter / Cmd+Enter để Gửi
+      if (e.key === 'Enter') {
+        if (e.ctrlKey || e.metaKey || !e.shiftKey) {
+          e.preventDefault();
+          saveClipboard();
+        }
       }
     }
 
     function handleClipboardInput() {
-      // Auto resize height
+      // Auto resize height cho text area nhập
       const el = $("shared-clipboard");
       el.style.height = "auto";
-      el.style.height = (el.scrollHeight + 2) + "px";
+      el.style.height = (el.scrollHeight) + "px";
     }
 
     // ─── UPLOAD ──────────────────────────────────────────────────────────────
@@ -1042,15 +1123,9 @@
         es.addEventListener("clipboard", (e) => {
           try {
             const data = JSON.parse(e.data);
-            if (data && data.text !== undefined) {
-              const textarea = $("shared-clipboard");
-              // Chỉ cập nhật nếu user không đang focus vào ô nhập (đang type)
-              // Hoặc nếu đang type nhưng content chưa thay đổi nhiều so với lần cuối
-              if (document.activeElement !== textarea || textarea.value === _lastClipboardText) {
-                textarea.value = data.text;
-                _lastClipboardText = data.text;
-                handleClipboardInput(); // resize
-              }
+            if (data && Array.isArray(data.history)) {
+              clipboardHistory = data.history;
+              renderClipboardList();
             }
           } catch (err) { console.error("SSE clipboard error", err); }
         });

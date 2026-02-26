@@ -13,11 +13,11 @@ const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 // .trim() để tránh lỗi khi biến môi trường có newline/khoảng trắng thừa trên Linux
-const PIN = (process.env.PIN ?? "8081").trim();
+const PIN = (process.env.PIN ?? "0801").trim();
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 
-// Biến lưu trữ văn bản Clipboard chung (lưu trên RAM)
-let sharedClipboard = "";
+// Biến lưu trữ lịch sử Clipboard chung (giới hạn 50 mục, lưu trên RAM)
+let clipboardHistory = [];
 // Tạo thư mục uploads nếu chưa tồn tại
 await fsPromises.mkdir(UPLOAD_DIR, { recursive: true });
 
@@ -130,6 +130,9 @@ app.use((req, res, next) => {
   if (req.method === "POST" && req.path.startsWith("/api/clipboard")) {
     return next();
   }
+  if (req.method === "DELETE" && req.path.startsWith("/api/clipboard")) {
+    return next();
+  }
 
   const pin = req.headers["x-pin"] || req.query.pin;
   if (pin !== PIN)
@@ -220,16 +223,16 @@ app.get("/api/files", async (req, res) => {
 
 // ─── CLIPBOARD API ────────────────────────────────────────────────────────────
 
-// Trả về văn bản clipbord (cần check PIN thủ công)
+// Trả về lịch sử clipbord
 app.get("/api/clipboard", (req, res) => {
   if (PIN) {
     const pin = req.headers["x-pin"] || req.query.pin;
     if (pin !== PIN) return res.status(401).json({ ok: false, error: "Unauthorized (PIN)" });
   }
-  res.json({ ok: true, text: sharedClipboard });
+  res.json({ ok: true, history: clipboardHistory });
 });
 
-// Cập nhật văn bản clipboard và gửi SSE
+// Thêm văn bản mới vào lịch sử
 app.post("/api/clipboard", (req, res) => {
   if (PIN) {
     const pin = req.headers["x-pin"] || req.query.pin;
@@ -237,15 +240,46 @@ app.post("/api/clipboard", (req, res) => {
   }
 
   const newText = req.body?.text || "";
-  if (typeof newText !== "string") {
-    return res.status(400).json({ ok: false, error: "Invalid text" });
+  if (typeof newText !== "string" || !newText.trim()) {
+    return res.status(400).json({ ok: false, error: "Invalid or empty text" });
   }
 
-  sharedClipboard = newText;
-  res.json({ ok: true });
+  const newItem = {
+    id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
+    text: newText,
+    timestamp: Date.now()
+  };
+
+  // Thêm vào đầu mảng và giới hạn 50 mục
+  clipboardHistory.unshift(newItem);
+  if (clipboardHistory.length > 50) {
+    clipboardHistory.pop();
+  }
+
+  res.json({ ok: true, item: newItem });
 
   // Phát tín hiệu SSE cho tất cả client
-  sseSend("clipboard", { text: sharedClipboard, at: Date.now() });
+  sseSend("clipboard", { history: clipboardHistory, at: Date.now() });
+});
+
+// Lệnh xóa một mục trong lịch sử clipboard
+app.delete("/api/clipboard/:id", (req, res) => {
+  if (PIN) {
+    const pin = req.headers["x-pin"] || req.query.pin;
+    if (pin !== PIN) return res.status(401).json({ ok: false, error: "Unauthorized (PIN)" });
+  }
+
+  const id = req.params.id;
+  const initialLength = clipboardHistory.length;
+  clipboardHistory = clipboardHistory.filter(item => item.id !== id);
+
+  if (clipboardHistory.length < initialLength) {
+    res.json({ ok: true });
+    // Phát tín hiệu update
+    sseSend("clipboard", { history: clipboardHistory, at: Date.now() });
+  } else {
+    res.status(404).json({ ok: false, error: "Item not found" });
+  }
 });
 
 app.post("/api/upload", upload.array("files"), async (req, res) => {
