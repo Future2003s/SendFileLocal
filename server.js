@@ -145,16 +145,23 @@ app.use((req, res, next) => {
 
 // ─── MULTER STORAGE ───────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, UPLOAD_DIR),
-  filename: (_, file, cb) => {
+  destination: (req, _file, cb) => {
+    const dir = req.query.dir || '';
+    const dest = safeDirPath(dir);
+    if (!dest) return cb(new Error('Invalid directory'));
+    fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
+  },
+  filename: (req, file, cb) => {
+    const dest = safeDirPath(req.query.dir || '') || UPLOAD_DIR;
     const safe = file.originalname.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_");
-    const target = path.join(UPLOAD_DIR, safe);
+    const target = path.join(dest, safe);
     if (!fs.existsSync(target)) return cb(null, safe);
 
     const ext = path.extname(safe);
     const base = path.basename(safe, ext);
     let i = 1;
-    while (fs.existsSync(path.join(UPLOAD_DIR, `${base} (${i})${ext}`))) i++;
+    while (fs.existsSync(path.join(dest, `${base} (${i})${ext}`))) i++;
     cb(null, `${base} (${i})${ext}`);
   },
 });
@@ -185,27 +192,63 @@ function tryFixMojibake(name) {
   }
 }
 
-async function getFilesWithEtag() {
-  const names = await fsPromises.readdir(UPLOAD_DIR);
-  const stats = await Promise.all(
-    names.map(async (rawName) => {
-      const p = path.join(UPLOAD_DIR, rawName);
-      const st = await fsPromises.stat(p);
-      const name = tryFixMojibake(rawName);
-      return { name, _rawName: rawName, size: st.size, mtime: st.mtimeMs };
-    })
-  );
-  stats.sort((a, b) => b.mtime - a.mtime);
+// Giải quyết dir param an toàn — trả về absolute path trong UPLOAD_DIR
+function safeDirPath(dir) {
+  if (!dir) return UPLOAD_DIR;
+  // Loại bỏ các ký tự nguy hiểm
+  const cleaned = dir.replace(/\.\./g, '').replace(/^[\/\\]+/, '');
+  const resolved = path.resolve(UPLOAD_DIR, cleaned);
+  if (!resolved.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) return null;
+  return resolved;
+}
 
-  const raw = stats.map((f) => `${f._rawName}:${f.mtime}`).join("|");
+async function getFilesWithEtag(dir = '') {
+  const targetDir = safeDirPath(dir);
+  if (!targetDir) throw new Error('Invalid directory');
+
+  // Tạo thư mục nếu chưa tồn tại
+  await fsPromises.mkdir(targetDir, { recursive: true });
+
+  const entries = await fsPromises.readdir(targetDir, { withFileTypes: true });
+
+  const folders = [];
+  const fileEntries = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(targetDir, entry.name);
+    if (entry.isDirectory()) {
+      // Đếm số item bên trong thư mục
+      try {
+        const children = await fsPromises.readdir(fullPath);
+        folders.push({ name: entry.name, itemCount: children.length });
+      } catch {
+        folders.push({ name: entry.name, itemCount: 0 });
+      }
+    } else {
+      const st = await fsPromises.stat(fullPath);
+      const name = tryFixMojibake(entry.name);
+      fileEntries.push({ name, _rawName: entry.name, size: st.size, mtime: st.mtimeMs });
+    }
+  }
+
+  // Sort: folders theo tên, files theo mtime mới nhất
+  folders.sort((a, b) => a.name.localeCompare(b.name));
+  fileEntries.sort((a, b) => b.mtime - a.mtime);
+
+  const raw = [...folders.map(f => `d:${f.name}`), ...fileEntries.map(f => `${f._rawName}:${f.mtime}`)].join('|');
   const etag = `"${crypto.createHash("md5").update(raw).digest("hex").slice(0, 16)}"`;
-  // Không trả _rawName ra client
-  return { files: stats.map(({ _rawName, ...rest }, i) => ({ ...rest, index: i + 1 })), etag };
+
+  return {
+    folders,
+    files: fileEntries.map(({ _rawName, ...rest }, i) => ({ ...rest, index: i + 1 })),
+    etag
+  };
 }
 
 app.get("/api/files", async (req, res) => {
   try {
-    const { files, etag } = await getFilesWithEtag();
+    const dir = req.query.dir || '';
+    const { folders, files, etag } = await getFilesWithEtag(dir);
 
     // Conditional GET — 304 Not Modified nếu client đã có bản này
     if (req.headers["if-none-match"] === etag) {
@@ -213,11 +256,67 @@ app.get("/api/files", async (req, res) => {
     }
 
     res.setHeader("ETag", etag);
-    res.setHeader("Cache-Control", "no-cache"); // revalidate mỗi lần, nhưng dùng ETag
-    res.json({ ok: true, files });
+    res.setHeader("Cache-Control", "no-cache");
+    res.json({ ok: true, folders, files, dir });
   } catch (e) {
     console.error("GET /api/files error:", e);
     res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+});
+
+// ─── FOLDER API ───────────────────────────────────────────────────────────────
+
+// Tạo thư mục mới
+app.post("/api/folders", async (req, res) => {
+  try {
+    const { name, dir } = req.body || {};
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ ok: false, error: 'Tên thư mục không hợp lệ' });
+    }
+
+    const safeName = name.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    const parentDir = safeDirPath(dir || '');
+    if (!parentDir) return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+
+    const newPath = path.join(parentDir, safeName);
+    if (!newPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+      return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+    }
+
+    if (fs.existsSync(newPath)) {
+      return res.status(409).json({ ok: false, error: 'Thư mục đã tồn tại' });
+    }
+
+    await fsPromises.mkdir(newPath, { recursive: true });
+    res.json({ ok: true, name: safeName });
+    sseSend('changed', { type: 'folder-create', name: safeName, dir: dir || '', at: Date.now() });
+  } catch (e) {
+    console.error('POST /api/folders error:', e);
+    res.status(500).json({ ok: false, error: 'Lỗi tạo thư mục' });
+  }
+});
+
+// Xóa thư mục (recursive)
+app.delete("/api/folders", async (req, res) => {
+  try {
+    const dir = req.query.dir || '';
+    if (!dir) return res.status(400).json({ ok: false, error: 'Thiếu đường dẫn thư mục' });
+
+    const targetPath = safeDirPath(dir);
+    if (!targetPath || targetPath === path.normalize(UPLOAD_DIR)) {
+      return res.status(400).json({ ok: false, error: 'Không thể xóa thư mục gốc' });
+    }
+
+    if (!fs.existsSync(targetPath)) {
+      return res.status(404).json({ ok: false, error: 'Thư mục không tồn tại' });
+    }
+
+    await fsPromises.rm(targetPath, { recursive: true, force: true });
+    res.json({ ok: true });
+    sseSend('changed', { type: 'folder-delete', dir, at: Date.now() });
+  } catch (e) {
+    console.error('DELETE /api/folders error:', e);
+    res.status(500).json({ ok: false, error: 'Lỗi xóa thư mục' });
   }
 });
 
@@ -282,11 +381,39 @@ app.delete("/api/clipboard/:id", (req, res) => {
   }
 });
 
-app.post("/api/upload", upload.array("files"), async (req, res) => {
+// Multer động: dựa vào query param dir để chọn thư mục đích
+const dynamicUpload = (req, res, next) => {
+  const dir = req.query.dir || '';
+  const targetDir = safeDirPath(dir);
+  if (!targetDir) return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+
+  // Tạo thư mục nếu chưa có
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  const dynamicStorage = multer.diskStorage({
+    destination: (_, __, cb) => cb(null, targetDir),
+    filename: (_, file, cb) => {
+      const safe = file.originalname.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+      const target = path.join(targetDir, safe);
+      if (!fs.existsSync(target)) return cb(null, safe);
+      const ext = path.extname(safe);
+      const base = path.basename(safe, ext);
+      let i = 1;
+      while (fs.existsSync(path.join(targetDir, `${base} (${i})${ext}`))) i++;
+      cb(null, `${base} (${i})${ext}`);
+    }
+  });
+
+  multer({ storage: dynamicStorage, limits: { fileSize: 1024 * 1024 * 1024 } })
+    .array('files')(req, res, next);
+};
+
+app.post("/api/upload", dynamicUpload, async (req, res) => {
   try {
     const uploaded = (req.files ?? []).map((f) => f.filename);
+    const dir = req.query.dir || '';
     res.json({ ok: true, uploaded });
-    sseSend("changed", { type: "upload", uploaded, at: Date.now() });
+    sseSend("changed", { type: "upload", uploaded, dir, at: Date.now() });
   } catch (e) {
     console.error("POST /api/upload error:", e);
     res.status(500).json({ ok: false, error: "Upload failed" });
@@ -302,24 +429,29 @@ function isSafeUploadPath(p) {
 
 app.get("/download/:name", (req, res) => {
   const name = req.params.name;
-  const p = path.resolve(UPLOAD_DIR, name);
-  if (!isSafeUploadPath(p)) return res.status(400).send("Bad Request");
+  const dir = req.query.dir || '';
+  const baseDir = safeDirPath(dir) || UPLOAD_DIR;
+  const p = path.resolve(baseDir, name);
+
+  // Kiểm tra path an toàn
+  if (!p.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+    return res.status(400).send("Bad Request");
+  }
 
   // Thử tìm file: trước tiên bằng tên gốc, sau đó bằng tên đã fix mojibake
   let filePath = p;
   if (!fs.existsSync(p)) {
-    // Tìm file có tên mojibake tương ứng
-    const allFiles = fs.readdirSync(UPLOAD_DIR);
-    const match = allFiles.find(f => tryFixMojibake(f) === name || f === name);
-    if (!match) return res.status(404).send("Not found");
-    filePath = path.join(UPLOAD_DIR, match);
+    try {
+      const allFiles = fs.readdirSync(baseDir);
+      const match = allFiles.find(f => tryFixMojibake(f) === name || f === name);
+      if (!match) return res.status(404).send("Not found");
+      filePath = path.join(baseDir, match);
+    } catch {
+      return res.status(404).send("Not found");
+    }
   }
 
-  // Tắt compression cho file binary (PDF, ZIP, ảnh...) để tránh pdf.js đọc sai
-  // compression middleware tôn trọng header này
   res.setHeader("Cache-Control", "no-transform");
-
-  // Thiết lập Content-Disposition với UTF-8 encoding đúng chuẩn RFC 5987
   const dispName = encodeURIComponent(path.basename(filePath));
   res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${dispName}`);
 
@@ -330,23 +462,31 @@ app.get("/download/:name", (req, res) => {
 
 app.delete("/api/files/:name", async (req, res) => {
   const name = req.params.name;
-  const p = path.resolve(UPLOAD_DIR, name);
+  const dir = req.query.dir || '';
+  const baseDir = safeDirPath(dir) || UPLOAD_DIR;
+  const p = path.resolve(baseDir, name);
 
-  if (!isSafeUploadPath(p)) return res.status(400).json({ ok: false, error: "Bad Request" });
+  if (!p.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+    return res.status(400).json({ ok: false, error: "Bad Request" });
+  }
 
   // Tìm file thực tế trên disk (kể cả tên mojibake)
   let filePath = p;
   if (!fs.existsSync(p)) {
-    const allFiles = fs.readdirSync(UPLOAD_DIR);
-    const match = allFiles.find(f => tryFixMojibake(f) === name || f === name);
-    if (!match) return res.status(404).json({ ok: false, error: "Not found" });
-    filePath = path.join(UPLOAD_DIR, match);
+    try {
+      const allFiles = fs.readdirSync(baseDir);
+      const match = allFiles.find(f => tryFixMojibake(f) === name || f === name);
+      if (!match) return res.status(404).json({ ok: false, error: "Not found" });
+      filePath = path.join(baseDir, match);
+    } catch {
+      return res.status(404).json({ ok: false, error: "Not found" });
+    }
   }
 
   try {
     await fsPromises.unlink(filePath);
     res.json({ ok: true });
-    sseSend("changed", { type: "delete", name, at: Date.now() });
+    sseSend("changed", { type: "delete", name, dir, at: Date.now() });
   } catch (e) {
     if (e.code === "ENOENT") return res.status(404).json({ ok: false, error: "Not found" });
     console.error("DELETE error:", e);

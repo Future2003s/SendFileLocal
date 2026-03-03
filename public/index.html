@@ -18,6 +18,11 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/fill/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/bold/style.css">
+
+  <!-- Office Preview Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
@@ -120,6 +125,55 @@
       overflow: hidden;
     }
 
+    /* File Group Section Headers */
+    .group-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.15s;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .group-header:hover {
+      background-color: #f8fafc;
+    }
+
+    .group-header:active {
+      background-color: #f1f5f9;
+    }
+
+    @media (min-width: 768px) {
+      .group-header {
+        padding: 12px 24px;
+      }
+    }
+
+    .group-chevron {
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      color: #94a3b8;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .group-collapsed .group-chevron {
+      transform: rotate(-90deg);
+    }
+
+    .group-body {
+      max-height: 5000px;
+      overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+      opacity: 1;
+    }
+
+    .group-collapsed .group-body {
+      max-height: 0 !important;
+      opacity: 0;
+    }
+
     /* Preview styles */
     .preview-doc-content {
       font-family: serif;
@@ -136,6 +190,40 @@
     .preview-doc-content td {
       border: 1px solid #cbd5e1;
       padding: 6px;
+    }
+
+    /* Excel Preview Table (SheetJS) */
+    .xl-preview table {
+      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      font-size: 13px;
+    }
+
+    .xl-preview th,
+    .xl-preview td {
+      border: 1px solid #e2e8f0;
+      padding: 6px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .xl-preview tr:first-child td,
+    .xl-preview tr:first-child th {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: #334155;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .xl-preview tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .xl-preview tr:hover {
+      background: #eff6ff;
     }
 
     /* Mobile App-like structure */
@@ -276,25 +364,47 @@
                 class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">0</span>
             </div>
 
-            <!-- Contextual Actions (khi có select) -->
-            <div id="table-actions" class="hidden items-center gap-2">
-              <span class="text-xs font-semibold text-slate-500 hidden sm:block mr-2"><span id="selected-count">0</span>
-                chọn</span>
-              <button onclick="toggleSelectAll()"
-                class="text-xs font-medium bg-slate-100 text-slate-700 px-3 py-2 rounded-lg active:scale-95 transition-transform md:hidden">
-                Chọn tất cả
+            <div class="flex items-center gap-1.5">
+              <!-- Nút tạo thư mục -->
+              <button onclick="promptCreateFolder()"
+                class="w-9 h-9 flex items-center justify-center bg-amber-50 text-amber-600 rounded-lg active:scale-95 transition-transform"
+                title="Tạo thư mục mới">
+                <i class="ph ph-folder-plus text-lg"></i>
               </button>
-              <button id="btn-download-selected" onclick="downloadSelected()"
-                class="w-9 h-9 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg active:scale-95 transition-transform"
-                title="Tải về">
-                <i class="ph ph-download-simple text-lg"></i>
+              <!-- Nút chia sẻ link -->
+              <button onclick="shareCurrentLink()"
+                class="w-9 h-9 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-lg active:scale-95 transition-transform"
+                title="Chia sẻ đường dẫn">
+                <i class="ph ph-share-network text-lg"></i>
               </button>
-              <button id="btn-delete-selected" onclick="openDeleteSelectedModal()"
-                class="w-9 h-9 flex items-center justify-center bg-red-50 text-red-600 rounded-lg active:scale-95 transition-transform"
-                title="Xóa">
-                <i class="ph ph-trash text-lg"></i>
-              </button>
+
+              <!-- Contextual Actions (khi có select) -->
+              <div id="table-actions" class="hidden items-center gap-1.5">
+                <span class="text-xs font-semibold text-slate-500 hidden sm:block mr-1"><span
+                    id="selected-count">0</span>
+                  chọn</span>
+                <button onclick="toggleSelectAll()"
+                  class="text-xs font-medium bg-slate-100 text-slate-700 px-3 py-2 rounded-lg active:scale-95 transition-transform md:hidden">
+                  Chọn tất cả
+                </button>
+                <button id="btn-download-selected" onclick="downloadSelected()"
+                  class="w-9 h-9 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg active:scale-95 transition-transform"
+                  title="Tải về">
+                  <i class="ph ph-download-simple text-lg"></i>
+                </button>
+                <button id="btn-delete-selected" onclick="openDeleteSelectedModal()"
+                  class="w-9 h-9 flex items-center justify-center bg-red-50 text-red-600 rounded-lg active:scale-95 transition-transform"
+                  title="Xóa">
+                  <i class="ph ph-trash text-lg"></i>
+                </button>
+              </div>
             </div>
+          </div>
+
+          <!-- Breadcrumb -->
+          <div id="breadcrumb-bar"
+            class="px-4 py-2 border-b border-slate-50 bg-slate-50/50 flex items-center gap-1.5 text-sm overflow-x-auto hide-scrollbar">
+            <!-- Render bởi JS -->
           </div>
 
           <!-- Danh sách -->
@@ -440,6 +550,31 @@
     </div>
   </div>
 
+  <!-- MODAL TẠO THƯ MỤC -->
+  <div id="folder-modal"
+    class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
+    onclick="if(event.target===this)closeFolderModal()">
+    <div
+      class="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden modal-slide-up pb-[var(--safe-area-bottom)] md:pb-0">
+      <div class="p-6 md:p-8 flex flex-col items-center">
+        <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-5">
+          <i class="ph ph-folder-plus text-3xl text-amber-600"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900 mb-4">Tạo thư mục mới</h3>
+        <input id="folder-name-input" type="text" placeholder="Tên thư mục..."
+          class="w-full px-4 py-3 bg-slate-100 border-none rounded-xl focus:ring-2 focus:ring-amber-500/50 transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();executeFolderCreate()}" />
+      </div>
+      <div class="p-4 flex gap-3 border-t border-slate-100 bg-slate-50/50">
+        <button onclick="closeFolderModal()"
+          class="flex-1 py-3.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 active:scale-95 transition-transform">Hủy</button>
+        <button onclick="executeFolderCreate()"
+          class="flex-1 py-3.5 rounded-xl font-semibold text-white bg-amber-500 active:scale-95 transition-transform shadow-md shadow-amber-500/20">Tạo
+          thư mục</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ─── UTILS ────────────────────────────────────────────────────────────────
     const $ = (id) => document.getElementById(id);
@@ -533,11 +668,142 @@
     ] : [];
 
     let currentFiles = [];
+    let currentFolders = [];
     let selectedFiles = new Set();
     let currentFilesToDelete = [];
+    let _pendingFolderDelete = null; // { folderName, fullPath }
     let lastEtag = null;
     let _refreshTimer = null;
     let _toastTimer = null;
+
+    // ─── FOLDER NAVIGATION ────────────────────────────────────────────
+    let currentDir = '';
+
+    // Đọc dir từ URL hash khi mở trang
+    function initDirFromHash() {
+      const hash = location.hash.slice(1);
+      const params = new URLSearchParams(hash);
+      currentDir = params.get('dir') || '';
+    }
+
+    function updateHash() {
+      if (currentDir) {
+        location.hash = `dir=${encodeURIComponent(currentDir)}`;
+      } else {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    }
+
+    function navigateToDir(dir) {
+      currentDir = dir;
+      updateHash();
+      lastEtag = null;
+      selectedFiles.clear();
+      refresh(true);
+    }
+
+    // Breadcrumb render
+    function renderBreadcrumb() {
+      const bar = $('breadcrumb-bar');
+      const parts = currentDir ? currentDir.split('/').filter(Boolean) : [];
+
+      let html = `<button onclick="navigateToDir('')" class="flex items-center gap-1 px-2 py-1 rounded-lg font-semibold transition-colors whitespace-nowrap ${!currentDir ? 'text-blue-600 bg-blue-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}">
+        <i class="ph-fill ph-house text-sm"></i> Gốc
+      </button>`;
+
+      let pathSoFar = '';
+      for (let i = 0; i < parts.length; i++) {
+        pathSoFar += (pathSoFar ? '/' : '') + parts[i];
+        const isLast = i === parts.length - 1;
+        const dirPath = pathSoFar;
+        html += `<i class="ph ph-caret-right text-slate-300 text-xs shrink-0"></i>`;
+        html += `<button onclick="navigateToDir('${dirPath.replace(/'/g, "\\'")}')" class="px-2 py-1 rounded-lg font-semibold transition-colors whitespace-nowrap ${isLast ? 'text-blue-600 bg-blue-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}">
+          <i class="ph-fill ph-folder text-sm"></i> ${parts[i]}
+        </button>`;
+      }
+
+      bar.innerHTML = html;
+    }
+
+    // Tạo thư mục mới — mở modal
+    function promptCreateFolder() {
+      const modal = $('folder-modal');
+      const input = $('folder-name-input');
+      input.value = '';
+      modal.classList.remove('hidden');
+      requestAnimationFrame(() => modal.classList.remove('opacity-0'));
+      setTimeout(() => input.focus(), 300);
+    }
+
+    function closeFolderModal() {
+      const modal = $('folder-modal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    async function executeFolderCreate() {
+      const name = $('folder-name-input').value;
+      if (!name || !name.trim()) {
+        $('folder-name-input').focus();
+        return;
+      }
+      closeFolderModal();
+
+      showStatus('Đang tạo thư mục...', 'loading');
+      try {
+        const res = await safeFetch('/api/folders', {
+          method: 'POST',
+          headers: { ...headers(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name.trim(), dir: currentDir })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          showStatus(`Đã tạo thư mục "${data.name || name}"`, 'success');
+          lastEtag = null;
+          refresh(true);
+        } else {
+          const data = await res.json?.() || {};
+          showStatus(data.error || 'Lỗi tạo thư mục', 'error');
+        }
+      } catch (e) {
+        showStatus('Lỗi kết nối', 'error');
+      }
+    }
+
+    // Xóa thư mục — mở modal xác nhận
+    function deleteFolder(folderName) {
+      const fullPath = currentDir ? `${currentDir}/${folderName}` : folderName;
+      _pendingFolderDelete = { folderName, fullPath };
+      currentFilesToDelete = [];
+      $('delete-message').textContent = `Xóa thư mục và toàn bộ nội dung bên trong?`;
+      $('delete-filename').textContent = folderName;
+      const modal = $('delete-modal');
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    // Chia sẻ đường dẫn
+    async function shareCurrentLink() {
+      const url = window.location.origin + window.location.pathname + (currentDir ? `#dir=${encodeURIComponent(currentDir)}` : '');
+      try {
+        await navigator.clipboard.writeText(url);
+        showStatus('Đã sao chép đường dẫn!', 'success');
+      } catch {
+        // Fallback
+        const t = document.createElement('textarea');
+        t.value = url;
+        document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+        showStatus('Đã sao chép đường dẫn!', 'success');
+      }
+    }
+
+    // Lắng nghe hash change (để back/forward hoạt động)
+    window.addEventListener('hashchange', () => {
+      initDirFromHash();
+      lastEtag = null;
+      selectedFiles.clear();
+      refresh(true);
+    });
 
     // ─── MOCK FETCH ───────────────────────────────────────────────────────────
     async function safeFetch(path, options = {}) {
@@ -688,14 +954,117 @@
         docx: { icon: "ph-file-doc", color: "text-blue-600", bg: "bg-blue-50" },
         xls: { icon: "ph-file-xls", color: "text-green-600", bg: "bg-green-50" },
         xlsx: { icon: "ph-file-xls", color: "text-green-600", bg: "bg-green-50" },
+        ppt: { icon: "ph-file-ppt", color: "text-orange-600", bg: "bg-orange-50" },
+        pptx: { icon: "ph-file-ppt", color: "text-orange-600", bg: "bg-orange-50" },
+        txt: { icon: "ph-file-text", color: "text-slate-600", bg: "bg-slate-100" },
+        csv: { icon: "ph-file-csv", color: "text-green-600", bg: "bg-green-50" },
         png: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
         jpg: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
         jpeg: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
+        webp: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
+        gif: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
+        svg: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
+        bmp: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
+        ico: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
         zip: { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
+        rar: { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
+        '7z': { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
+        tar: { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
+        gz: { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
         mp4: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
-        mp3: { icon: "ph-file-audio", color: "text-yellow-500", bg: "bg-yellow-50" },
+        webm: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
+        avi: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
+        mov: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
+        mkv: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
+        mp3: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
+        wav: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
+        ogg: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
+        flac: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
+        aac: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
+        m4a: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
       };
       return map[ext] || { icon: "ph-file", color: "text-slate-500", bg: "bg-slate-100" };
+    }
+
+    // ─── FILE CATEGORY GROUPING ──────────────────────────────────────────
+    const FILE_CATEGORIES = [
+      {
+        key: 'images',
+        label: 'Hình ảnh',
+        icon: 'ph-image',
+        color: 'text-purple-500',
+        bg: 'bg-purple-50',
+        badgeBg: 'bg-purple-100',
+        badgeText: 'text-purple-700',
+        exts: new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico', 'tiff', 'tif'])
+      },
+      {
+        key: 'documents',
+        label: 'Tài liệu',
+        icon: 'ph-file-text',
+        color: 'text-blue-600',
+        bg: 'bg-blue-50',
+        badgeBg: 'bg-blue-100',
+        badgeText: 'text-blue-700',
+        exts: new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'rtf', 'odt', 'ods', 'json', 'xml', 'html', 'css', 'js', 'md'])
+      },
+      {
+        key: 'videos',
+        label: 'Video',
+        icon: 'ph-file-video',
+        color: 'text-pink-500',
+        bg: 'bg-pink-50',
+        badgeBg: 'bg-pink-100',
+        badgeText: 'text-pink-700',
+        exts: new Set(['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', '3gp'])
+      },
+      {
+        key: 'audio',
+        label: 'Âm thanh',
+        icon: 'ph-file-audio',
+        color: 'text-yellow-600',
+        bg: 'bg-yellow-50',
+        badgeBg: 'bg-yellow-100',
+        badgeText: 'text-yellow-700',
+        exts: new Set(['mp3', 'wav', 'ogg', 'flac', 'aac', 'wma', 'm4a', 'opus'])
+      },
+      {
+        key: 'archives',
+        label: 'Nén / Archive',
+        icon: 'ph-file-archive',
+        color: 'text-orange-500',
+        bg: 'bg-orange-50',
+        badgeBg: 'bg-orange-100',
+        badgeText: 'text-orange-700',
+        exts: new Set(['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso'])
+      },
+      {
+        key: 'other',
+        label: 'Khác',
+        icon: 'ph-file',
+        color: 'text-slate-500',
+        bg: 'bg-slate-100',
+        badgeBg: 'bg-slate-200',
+        badgeText: 'text-slate-600',
+        exts: null // catch-all
+      }
+    ];
+
+    // Trạng thái collapse cho mỗi nhóm (mặc định mở)
+    const groupCollapsed = {};
+
+    function getFileCategory(filename) {
+      const ext = (filename.split('.').pop() || '').toLowerCase();
+      for (const cat of FILE_CATEGORIES) {
+        if (cat.exts && cat.exts.has(ext)) return cat;
+      }
+      return FILE_CATEGORIES[FILE_CATEGORIES.length - 1]; // 'other'
+    }
+
+    function toggleGroup(key) {
+      groupCollapsed[key] = !groupCollapsed[key];
+      const section = document.querySelector(`[data-group="${key}"]`);
+      if (section) section.classList.toggle('group-collapsed', !!groupCollapsed[key]);
     }
 
     // ─── SELECTION UI ─────────────────────────────────────────────────
@@ -758,12 +1127,13 @@
       updateSelectionUI();
     }
 
-    // ─── BUILD ROW ───────────────────────────────────────────────────
+    // ─── BUILD FILE ROW ──────────────────────────────────────────
     function buildRow(f) {
       const fileName = f.name.normalize("NFC");
       const props = fileProps(fileName);
       const encName = encodeURIComponent(fileName);
       const isChecked = selectedFiles.has(encName);
+      const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
 
       const div = document.createElement("div");
       div.dataset.enc = encName;
@@ -780,7 +1150,7 @@
       };
 
       div.innerHTML = `
-        <!-- Checkbox (Desktop only) -->
+        <!-- Checkbox (Desktop) -->
         <div class="hidden md:flex w-10 justify-center shrink-0">
           <input type="checkbox" class="file-cb w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
             value="${encName}" ${isChecked ? 'checked' : ''} onchange="toggleSelect('${encName}', event)">
@@ -806,14 +1176,14 @@
         <!-- Actions -->
         <div class="flex items-center gap-1 shrink-0 ml-2 md:w-32 md:justify-center">
 
-          <!-- Mobile: circle tick (luon hien), tap = toggle select -->
+          <!-- Mobile: circle tick -->
           <div class="md:hidden flex items-center justify-center w-10 h-10" onclick="toggleSelect('${encName}', event)">
             <div class="mobile-circle w-6 h-6 rounded-full border-2 ${isChecked ? 'border-blue-500 bg-blue-500' : 'border-slate-300 bg-white'} flex items-center justify-center transition-all">
               ${isChecked ? '<i class="ph-bold ph-check text-white text-xs"></i>' : ''}
             </div>
           </div>
 
-          <!-- Mobile: preview button (eye icon, only shows when NOT in select mode) -->
+          <!-- Mobile: preview button -->
           <button class="md:hidden mobile-preview-btn flex items-center justify-center w-10 h-10 text-slate-300 active:scale-90 transition-transform"
             onclick="openPreviewModal('${encName}', '${fileName.replace(/'/g, "\\'")}')"
             title="Xem tr\u01b0\u1edbc">
@@ -824,7 +1194,7 @@
           <button onclick="openDeleteModal('${encName}','${fileName.replace(/'/g, "\\'")}')" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="X\u00f3a">
             <i class="ph-fill ph-trash text-lg"></i>
           </button>
-          <a href="/download/${encName}" target="_blank" onclick="event.stopPropagation()" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="T\u1ea3i xu\u1ed1ng">
+          <a href="/download/${encName}${dirParam}" target="_blank" onclick="event.stopPropagation()" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="T\u1ea3i xu\u1ed1ng">
             <i class="ph-bold ph-download-simple text-lg"></i>
           </a>
         </div>
@@ -832,24 +1202,119 @@
       return div;
     }
 
-    function renderFiles(files) {
+    // ─── BUILD FOLDER ROW ─────────────────────────────────────────
+    function buildFolderRow(folder) {
+      const folderName = folder.name;
+      const targetDir = currentDir ? `${currentDir}/${folderName}` : folderName;
+
+      const div = document.createElement('div');
+      div.className = 'folder-row group flex items-center p-3 md:px-6 md:py-4 hover:bg-amber-50/50 cursor-pointer transition-colors border-b border-slate-50 last:border-0';
+      div.onclick = (e) => {
+        if (e.target.closest('button')) return;
+        navigateToDir(targetDir);
+      };
+
+      div.innerHTML = `
+        <!-- Spacer for checkbox alignment (Desktop) -->
+        <div class="hidden md:flex w-10 justify-center shrink-0"></div>
+
+        <!-- Icon & Info -->
+        <div class="flex-1 min-w-0 flex items-center gap-3 md:px-4">
+          <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
+            <i class="ph-fill ph-folder text-amber-500 text-2xl"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold text-slate-800 text-sm md:text-base truncate pr-2 group-hover:text-amber-600 transition-colors">${folderName}</h3>
+            <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
+              <i class="ph ph-files text-xs"></i>
+              <span>${folder.itemCount} mục</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Size placeholder (Desktop) -->
+        <div class="hidden md:block w-24 text-right text-slate-400 text-sm font-medium">—</div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-1 shrink-0 ml-2 md:w-32 md:justify-center">
+          <button onclick="event.stopPropagation(); deleteFolder('${folderName.replace(/'/g, "\\'")}')" class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors" title="Xóa thư mục">
+            <i class="ph ph-trash text-lg"></i>
+          </button>
+          <div class="w-9 h-9 flex items-center justify-center text-slate-300">
+            <i class="ph ph-caret-right text-lg"></i>
+          </div>
+        </div>
+      `;
+      return div;
+    }
+
+    function renderFiles(files, folders = []) {
       const tb = $("list");
 
-      if (files.length === 0) {
+      if (files.length === 0 && folders.length === 0) {
         tb.innerHTML = `
         <div class="px-6 py-24 text-center flex flex-col items-center">
           <div class="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-4">
             <i class="ph-fill ph-folder-open text-5xl text-blue-200"></i>
           </div>
           <p class="font-bold text-slate-700 text-lg">Th\u01b0 m\u1ee5c tr\u1ed1ng</p>
-          <p class="text-sm text-slate-500 mt-1">B\u1ea5m n\u00fat (+) b\u00ean d\u01b0\u1edbi \u0111\u1ec3 th\u00eam file</p>
+          <p class="text-sm text-slate-500 mt-1">B\u1ea5m n\u00fat (+) ho\u1eb7c t\u1ea1o th\u01b0 m\u1ee5c \u0111\u1ec3 b\u1eaft \u0111\u1ea7u</p>
         </div>`;
         return;
       }
 
-      // Full rebuild on each render – simple & always correct
       const frag = document.createDocumentFragment();
-      for (const f of files) frag.appendChild(buildRow(f));
+
+      // Render folders first
+      if (folders.length > 0) {
+        for (const folder of folders) {
+          frag.appendChild(buildFolderRow(folder));
+        }
+      }
+
+      // Nhóm file theo danh mục
+      if (files.length > 0) {
+        const groups = new Map();
+        for (const cat of FILE_CATEGORIES) groups.set(cat.key, []);
+        for (const f of files) {
+          const cat = getFileCategory(f.name);
+          groups.get(cat.key).push(f);
+        }
+
+        for (const cat of FILE_CATEGORIES) {
+          const groupFiles = groups.get(cat.key);
+          if (groupFiles.length === 0) continue;
+
+          const totalSize = groupFiles.reduce((s, f) => s + (f.size || 0), 0);
+          const isCollapsed = !!groupCollapsed[cat.key];
+
+          const section = document.createElement('div');
+          section.dataset.group = cat.key;
+          section.className = isCollapsed ? 'group-collapsed' : '';
+
+          const header = document.createElement('div');
+          header.className = 'group-header';
+          header.onclick = () => toggleGroup(cat.key);
+          header.innerHTML = `
+            <i class="group-chevron ph-bold ph-caret-down"></i>
+            <div class="w-8 h-8 rounded-lg ${cat.bg} flex items-center justify-center shrink-0">
+              <i class="ph-fill ${cat.icon} ${cat.color} text-lg"></i>
+            </div>
+            <span class="font-bold text-slate-700 text-sm">${cat.label}</span>
+            <span class="text-[10px] font-bold ${cat.badgeBg} ${cat.badgeText} px-2 py-0.5 rounded-md">${groupFiles.length}</span>
+            <span class="text-[11px] text-slate-400 font-medium ml-auto">${fmt(totalSize)}</span>
+          `;
+          section.appendChild(header);
+
+          const body = document.createElement('div');
+          body.className = 'group-body';
+          for (const f of groupFiles) body.appendChild(buildRow(f));
+          section.appendChild(body);
+
+          frag.appendChild(section);
+        }
+      }
+
       tb.innerHTML = '';
       tb.appendChild(frag);
     }
@@ -863,7 +1328,8 @@
         const sentPin = reqHeaders["X-PIN"] || "";
         if (lastEtag && !force) reqHeaders["If-None-Match"] = lastEtag;
 
-        const res = await safeFetch("/api/files", { headers: reqHeaders });
+        const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
+        const res = await safeFetch(`/api/files${dirParam}`, { headers: reqHeaders });
         if (res.status === 304) return;
 
         if (!res.ok) {
@@ -878,13 +1344,15 @@
 
         const data = await res.json();
         currentFiles = data.files || [];
+        currentFolders = data.folders || [];
 
         const encSet = new Set(currentFiles.map(f => encodeURIComponent(f.name.normalize("NFC"))));
         for (const enc of selectedFiles) { if (!encSet.has(enc)) selectedFiles.delete(enc); }
 
-        $("file-count").textContent = currentFiles.length;
+        $("file-count").textContent = currentFiles.length + currentFolders.length;
         updateSelectionUI();
-        renderFiles(currentFiles);
+        renderBreadcrumb();
+        renderFiles(currentFiles, currentFolders);
         fetchClipboard();
 
       } catch (e) {
@@ -1056,7 +1524,11 @@
 
       try {
         const pinVal = headers()["X-PIN"] || "";
-        const uploadUrl = pinVal ? `/api/upload?pin=${encodeURIComponent(pinVal)}` : "/api/upload";
+        const params = new URLSearchParams();
+        if (pinVal) params.set('pin', pinVal);
+        if (currentDir) params.set('dir', currentDir);
+        const qs = params.toString();
+        const uploadUrl = `/api/upload${qs ? '?' + qs : ''}`;
         const res = await safeFetch(uploadUrl, { method: "POST", body: fd, headers: headers() });
 
         if (!res.ok) showStatus("Lỗi tải lên", "error");
@@ -1080,14 +1552,15 @@
       // Kích hoạt animation
       setTimeout(() => { modal.classList.remove("opacity-0"); }, 10);
 
-      $("preview-download-btn").href = `/download/${encName}`;
+      const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
+      $("preview-download-btn").href = `/download/${encName}${dirParam}`;
 
       const pb = $("preview-body");
       pb.innerHTML = '<i class="ph ph-spinner animate-spin text-4xl text-blue-500"></i>';
 
-      let actualUrl = `/download/${encName}`;
+      let actualUrl = `/download/${encName}${dirParam}`;
       const pin = headers()["X-PIN"] || "";
-      if (pin) actualUrl += `?pin=${encodeURIComponent(pin)}`;
+      if (pin) actualUrl += `${dirParam ? '&' : '?'}pin=${encodeURIComponent(pin)}`;
 
       if (isLocalPreview) {
         const mockF = mockFiles.find(f => encodeURIComponent(f.name.normalize("NFC")) === encName);
@@ -1096,12 +1569,99 @@
       }
 
       const ext = fileName.split('.').pop().toLowerCase();
-      if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
-        pb.innerHTML = `<img src="${actualUrl}" class="max-w-full max-h-full object-contain md:rounded-xl shadow-sm" />`;
-      } else if (['mp4', 'webm'].includes(ext)) {
+      const imageExts = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico', 'avif'];
+      const videoExts = ['mp4', 'webm', 'mov', 'ogg', '3gp'];
+      const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'opus', 'wma'];
+      const textExts = ['txt', 'json', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'htm', 'xml', 'csv', 'log', 'md', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'sh', 'bat', 'ps1', 'py', 'rb', 'java', 'c', 'cpp', 'h', 'go', 'rs', 'sql', 'env', 'gitignore', 'dockerfile'];
+
+      if (imageExts.includes(ext)) {
+        pb.innerHTML = `<img src="${actualUrl}" class="max-w-full max-h-full object-contain md:rounded-xl shadow-sm" onerror="this.parentElement.innerHTML='<p class=\\'text-slate-500 font-medium\\'>Không thể tải ảnh</p>'" />`;
+      } else if (videoExts.includes(ext)) {
         pb.innerHTML = `<video src="${actualUrl}" controls autoplay class="w-full max-h-full bg-black md:rounded-xl"></video>`;
+      } else if (audioExts.includes(ext)) {
+        pb.innerHTML = `
+          <div class="text-center p-8 bg-white rounded-3xl shadow-sm max-w-sm w-full">
+            <div class="w-24 h-24 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-5">
+              <i class="ph-fill ph-music-notes text-5xl text-yellow-500"></i>
+            </div>
+            <p class="font-bold text-slate-800 text-lg mb-4">${fileName}</p>
+            <audio src="${actualUrl}" controls autoplay class="w-full"></audio>
+          </div>`;
       } else if (ext === 'pdf') {
         pb.innerHTML = `<iframe src="${actualUrl}" class="w-full h-full border-0 bg-white md:rounded-xl"></iframe>`;
+      } else if (['doc', 'docx'].includes(ext)) {
+        // Word preview via mammoth.js
+        pb.innerHTML = '<i class="ph ph-spinner animate-spin text-4xl text-blue-500"></i>';
+        fetch(actualUrl)
+          .then(r => { if (!r.ok) throw new Error('Fetch failed'); return r.arrayBuffer(); })
+          .then(buf => mammoth.convertToHtml({ arrayBuffer: buf }))
+          .then(result => {
+            pb.innerHTML = `
+              <div class="w-full h-full overflow-auto bg-white md:rounded-xl">
+                <div class="p-6 md:p-10 max-w-4xl mx-auto prose prose-slate prose-sm md:prose-base" style="font-family:'Times New Roman',serif;line-height:1.8">${result.value}</div>
+              </div>`;
+          })
+          .catch(() => {
+            pb.innerHTML = `
+              <div class="text-center p-6 bg-white rounded-3xl shadow-sm max-w-sm w-full">
+                <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4"><i class="ph-fill ph-file-doc text-4xl text-blue-500"></i></div>
+                <p class="font-bold text-slate-800 text-lg mb-1">Không thể xem trước</p>
+                <p class="text-sm text-slate-500 mb-6">Tải về để mở bằng MS Word hoặc WPS.</p>
+                <a href="${actualUrl}" class="block w-full py-3 bg-blue-600 text-white font-bold rounded-xl active:scale-95 transition-transform">Tải xuống ngay</a>
+              </div>`;
+          });
+      } else if (['xls', 'xlsx'].includes(ext)) {
+        // Excel preview via SheetJS
+        pb.innerHTML = '<i class="ph ph-spinner animate-spin text-4xl text-blue-500"></i>';
+        fetch(actualUrl)
+          .then(r => { if (!r.ok) throw new Error('Fetch failed'); return r.arrayBuffer(); })
+          .then(buf => {
+            const wb = XLSX.read(buf, { type: 'array' });
+            let tabsHtml = '';
+            let sheetsHtml = '';
+            wb.SheetNames.forEach((name, idx) => {
+              tabsHtml += `<button onclick="document.querySelectorAll('.xl-sheet').forEach(s=>s.classList.add('hidden'));document.getElementById('xl-sheet-${idx}').classList.remove('hidden');this.parentElement.querySelectorAll('button').forEach(b=>{b.classList.remove('bg-green-600','text-white');b.classList.add('bg-slate-100','text-slate-600')});this.classList.remove('bg-slate-100','text-slate-600');this.classList.add('bg-green-600','text-white')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap ${idx === 0 ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600'}">${name}</button>`;
+              const ws = wb.Sheets[name];
+              const html = XLSX.utils.sheet_to_html(ws, { editable: false });
+              sheetsHtml += `<div id="xl-sheet-${idx}" class="xl-sheet ${idx > 0 ? 'hidden' : ''}">${html}</div>`;
+            });
+            pb.innerHTML = `
+              <div class="w-full h-full overflow-auto bg-white md:rounded-xl flex flex-col">
+                <div class="flex gap-2 p-3 bg-slate-50 border-b border-slate-200 overflow-x-auto shrink-0 hide-scrollbar">${tabsHtml}</div>
+                <div class="flex-1 overflow-auto p-2 xl-preview">${sheetsHtml}</div>
+              </div>`;
+          })
+          .catch(() => {
+            pb.innerHTML = `
+              <div class="text-center p-6 bg-white rounded-3xl shadow-sm max-w-sm w-full">
+                <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4"><i class="ph-fill ph-file-xls text-4xl text-green-600"></i></div>
+                <p class="font-bold text-slate-800 text-lg mb-1">Không thể xem trước</p>
+                <p class="text-sm text-slate-500 mb-6">Tải về để mở bằng MS Excel hoặc WPS.</p>
+                <a href="${actualUrl}" class="block w-full py-3 bg-green-600 text-white font-bold rounded-xl active:scale-95 transition-transform">Tải xuống ngay</a>
+              </div>`;
+          });
+      } else if (['ppt', 'pptx'].includes(ext)) {
+        pb.innerHTML = `
+          <div class="text-center p-6 bg-white rounded-3xl shadow-sm max-w-sm w-full">
+            <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4"><i class="ph-fill ph-file-ppt text-4xl text-orange-600"></i></div>
+            <p class="font-bold text-slate-800 text-lg mb-1">Bản trình chiếu</p>
+            <p class="text-sm text-slate-500 mb-6">Tải về để mở bằng MS PowerPoint hoặc WPS.</p>
+            <a href="${actualUrl}" class="block w-full py-3 bg-orange-500 text-white font-bold rounded-xl active:scale-95 transition-transform">Tải xuống ngay</a>
+          </div>`;
+      } else if (textExts.includes(ext)) {
+        pb.innerHTML = '<i class="ph ph-spinner animate-spin text-4xl text-blue-500"></i>';
+        fetch(actualUrl)
+          .then(r => { if (!r.ok) throw new Error('Fetch failed'); return r.text(); })
+          .then(text => {
+            const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            pb.innerHTML = `
+              <div class="w-full h-full overflow-auto bg-white md:rounded-xl">
+                <pre class="p-4 md:p-6 text-sm font-mono text-slate-800 whitespace-pre-wrap break-words leading-relaxed"><code>${escaped}</code></pre>
+              </div>`;
+          })
+          .catch(() => {
+            pb.innerHTML = '<p class="text-slate-500 font-medium">Không thể đọc nội dung tệp</p>';
+          });
       } else {
         pb.innerHTML = `
           <div class="text-center p-6 bg-white rounded-3xl shadow-sm max-w-sm w-full">
@@ -1120,7 +1680,9 @@
     }
 
     function openDeleteModal(encName, fileName) {
+      _pendingFolderDelete = null;
       currentFilesToDelete = [{ encName, name: fileName }];
+      $('delete-message').textContent = 'Bạn có chắc chắn muốn xóa?';
       $("delete-filename").textContent = fileName;
       const modal = $("delete-modal");
       modal.classList.remove("hidden");
@@ -1128,7 +1690,9 @@
     }
 
     function openDeleteSelectedModal() {
+      _pendingFolderDelete = null;
       currentFilesToDelete = Array.from(selectedFiles).map(encName => ({ encName }));
+      $('delete-message').textContent = 'Bạn có chắc chắn muốn xóa?';
       $("delete-filename").textContent = `${currentFilesToDelete.length} tệp tin đã chọn`;
       const modal = $("delete-modal");
       modal.classList.remove("hidden");
@@ -1142,12 +1706,38 @@
     }
 
     async function executeDelete() {
-      if (!currentFilesToDelete.length) return;
       closeDeleteModal();
+
+      // Xóa thư mục
+      if (_pendingFolderDelete) {
+        const { folderName, fullPath } = _pendingFolderDelete;
+        _pendingFolderDelete = null;
+        showStatus('Đang xóa thư mục...', 'loading');
+        try {
+          const res = await safeFetch(`/api/folders?dir=${encodeURIComponent(fullPath)}`, {
+            method: 'DELETE',
+            headers: headers()
+          });
+          if (res.ok) {
+            showStatus('Đã xóa thư mục', 'success');
+            lastEtag = null;
+            refresh(true);
+          } else {
+            showStatus('Lỗi xóa thư mục', 'error');
+          }
+        } catch (e) {
+          showStatus('Lỗi kết nối', 'error');
+        }
+        return;
+      }
+
+      // Xóa file
+      if (!currentFilesToDelete.length) return;
       showStatus("Đang xóa...", "loading");
 
       try {
-        await Promise.all(currentFilesToDelete.map(f => safeFetch(`/api/files/${f.encName}`, { method: "DELETE", headers: headers() })));
+        const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
+        await Promise.all(currentFilesToDelete.map(f => safeFetch(`/api/files/${f.encName}${dirParam}`, { method: "DELETE", headers: headers() })));
         currentFilesToDelete.forEach(f => selectedFiles.delete(f.encName));
         showStatus("Đã xóa thành công", "success");
         lastEtag = null;
@@ -1161,9 +1751,10 @@
       const list = Array.from(selectedFiles);
       if (!list.length) return;
       showStatus(`Đang tải ${list.length} tệp...`, "loading");
+      const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
       for (const encName of list) {
         const a = document.createElement('a');
-        a.href = `/download/${encName}`;
+        a.href = `/download/${encName}${dirParam}`;
         a.download = decodeURIComponent(encName);
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         await new Promise(r => setTimeout(r, 500)); // Tránh browser block popup
