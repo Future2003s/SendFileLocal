@@ -21,6 +21,34 @@ let clipboardHistory = [];
 // Tạo thư mục uploads nếu chưa tồn tại
 await fsPromises.mkdir(UPLOAD_DIR, { recursive: true });
 
+// ─── AUTO-FIX MOJIBAKE FILENAMES ──────────────────────────────────────────────
+// Khi server khởi động, tự đổi tên file bị mojibake thành tên UTF-8 đúng
+async function autoFixMojibakeNames(dir) {
+  try {
+    const entries = await fsPromises.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await autoFixMojibakeNames(fullPath); // Recursive
+        continue;
+      }
+      // Thử fix tên file
+      try {
+        const bytes = Buffer.from(entry.name, 'latin1');
+        const decoded = bytes.toString('utf8');
+        if (Buffer.from(decoded, 'utf8').equals(bytes) && decoded !== entry.name) {
+          const newPath = path.join(dir, decoded);
+          if (!fs.existsSync(newPath)) {
+            await fsPromises.rename(fullPath, newPath);
+            console.log(`🔧 Renamed: "${entry.name}" → "${decoded}"`);
+          }
+        }
+      } catch { }
+    }
+  } catch { }
+}
+await autoFixMojibakeNames(UPLOAD_DIR);
+
 const app = express();
 
 // Nhận đúng IP thật của client nếu LAN Share chạy sau reverse proxy (Nginx, Cloudflare...)
@@ -154,7 +182,9 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const dest = safeDirPath(req.query.dir || '') || UPLOAD_DIR;
-    const safe = file.originalname.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_");
+    // Fix multer mojibake: decode tên file từ Latin-1 → UTF-8
+    const fixedName = tryFixMojibake(file.originalname);
+    const safe = fixedName.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_");
     const target = path.join(dest, safe);
     if (!fs.existsSync(target)) return cb(null, safe);
 
@@ -433,7 +463,9 @@ const dynamicUpload = (req, res, next) => {
   const dynamicStorage = multer.diskStorage({
     destination: (_, __, cb) => cb(null, targetDir),
     filename: (_, file, cb) => {
-      const safe = file.originalname.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+      // Fix multer mojibake: decode tên file từ Latin-1 → UTF-8
+      const fixedName = tryFixMojibake(file.originalname);
+      const safe = fixedName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
       const target = path.join(targetDir, safe);
       if (!fs.existsSync(target)) return cb(null, safe);
       const ext = path.extname(safe);
@@ -468,7 +500,7 @@ function isSafeUploadPath(p) {
 }
 
 app.get("/download/:name", (req, res) => {
-  const name = req.params.name;
+  const name = decodeURIComponent(req.params.name);
   const dir = req.query.dir || '';
   const baseDir = safeDirPath(dir) || UPLOAD_DIR;
   const p = path.resolve(baseDir, name);
@@ -491,9 +523,23 @@ app.get("/download/:name", (req, res) => {
     }
   }
 
+  // ── Tên hiển thị: ưu tiên ?dl=..., fallback về tên từ URL ──
+  const displayName = req.query.dl || name;
+
+  // ── Content-Disposition ──
+  // RFC 5987: filename*=UTF-8''... cho trình duyệt hiện đại (hỗ trợ tiếng Việt)
+  // filename="..." cho trình duyệt cũ (ASCII-only, thay ký tự đặc biệt bằng _)
+  const isPreview = req.query.preview === '1';
+  const disposition = isPreview ? 'inline' : 'attachment';
+  const asciiName = displayName.replace(/[^\x20-\x7E]/g, '_'); // Fallback ASCII-safe
+  const utf8Name = encodeURIComponent(displayName).replace(/'/g, '%27');
+  res.setHeader("Content-Disposition",
+    `${disposition}; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`
+  );
+
+  // ── Headers ──
   res.setHeader("Cache-Control", "no-transform");
-  const dispName = encodeURIComponent(path.basename(filePath));
-  res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${dispName}`);
+  // Không set Content-Type thủ công — Express/sendFile tự detect từ extension chính xác hơn
 
   res.sendFile(filePath, { dotfiles: "deny" }, (err) => {
     if (err && !res.headersSent) res.status(500).end();

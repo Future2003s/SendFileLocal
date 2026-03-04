@@ -1680,7 +1680,7 @@
           <button onclick="openDeleteModal('${encName}','${fileName.replace(/'/g, "\\'")}')" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="X\u00f3a">
             <i class="ph-fill ph-trash text-lg"></i>
           </button>
-          <a href="/download/${encName}${dirParam}" target="_blank" onclick="event.stopPropagation()" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="T\u1ea3i xu\u1ed1ng">
+          <a href="/download/${encName}${dirParam}" download="${fileName}" onclick="event.stopPropagation()" class="hidden md:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="T\u1ea3i xu\u1ed1ng">
             <i class="ph-bold ph-download-simple text-lg"></i>
           </a>
         </div>
@@ -2152,13 +2152,14 @@
 
       const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
       $("preview-download-btn").href = `/download/${encName}${dirParam}`;
+      $("preview-download-btn").download = fileName;
 
       const pb = $("preview-body");
       pb.innerHTML = '<i class="ph ph-spinner animate-spin text-4xl text-blue-500"></i>';
 
-      let actualUrl = `/download/${encName}${dirParam}`;
+      let actualUrl = `/download/${encName}${dirParam ? dirParam + '&' : '?'}preview=1`;
       const pin = headers()["X-PIN"] || "";
-      if (pin) actualUrl += `${dirParam ? '&' : '?'}pin=${encodeURIComponent(pin)}`;
+      if (pin) actualUrl += `&pin=${encodeURIComponent(pin)}`;
 
       if (isLocalPreview) {
         const mockF = mockFiles.find(f => encodeURIComponent(f.name.normalize("NFC")) === encName);
@@ -2342,14 +2343,29 @@
       if (!list.length) return;
       showStatus(`Đang tải ${list.length} tệp...`, "loading");
       const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
+      let ok = 0;
       for (const encName of list) {
-        const a = document.createElement('a');
-        a.href = `/download/${encName}${dirParam}`;
-        a.download = decodeURIComponent(encName);
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        await new Promise(r => setTimeout(r, 500)); // Tránh browser block popup
+        try {
+          // Dùng fetch+blob để đảm bảo tên file chính xác trên mọi trình duyệt
+          let url = `/download/${encName}${dirParam}`;
+          const pin = headers()['X-PIN'] || '';
+          if (pin) url += `${dirParam ? '&' : '?'}pin=${encodeURIComponent(pin)}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = decodeURIComponent(encName); // Tên file gốc, tiếng Việt OK
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+          ok++;
+          await new Promise(r => setTimeout(r, 300));
+        } catch (e) {
+          console.error('Download failed:', encName, e);
+        }
       }
-      showStatus(`Hoàn tất yêu cầu tải`, "success");
+      showStatus(ok === list.length ? `Đã tải ${ok} tệp thành công` : `Tải ${ok}/${list.length} tệp`, ok === list.length ? 'success' : 'error');
     }
 
     // ─── GLOBAL DRAG-DROP (upload to current directory) ─────────────────────
