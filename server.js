@@ -202,6 +202,35 @@ function safeDirPath(dir) {
   return resolved;
 }
 
+// Tính tổng dung lượng thư mục (recursive, có giới hạn depth)
+async function calcFolderMeta(dirPath, maxDepth = 3, depth = 0) {
+  let totalSize = 0;
+  let fileCount = 0;
+  let folderCount = 0;
+  try {
+    const entries = await fsPromises.readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        folderCount++;
+        if (depth < maxDepth) {
+          const sub = await calcFolderMeta(fullPath, maxDepth, depth + 1);
+          totalSize += sub.totalSize;
+          fileCount += sub.fileCount;
+          folderCount += sub.folderCount;
+        }
+      } else {
+        try {
+          const st = await fsPromises.stat(fullPath);
+          totalSize += st.size;
+          fileCount++;
+        } catch { }
+      }
+    }
+  } catch { }
+  return { totalSize, fileCount, folderCount };
+}
+
 async function getFilesWithEtag(dir = '') {
   const targetDir = safeDirPath(dir);
   if (!targetDir) throw new Error('Invalid directory');
@@ -217,12 +246,23 @@ async function getFilesWithEtag(dir = '') {
   for (const entry of entries) {
     const fullPath = path.join(targetDir, entry.name);
     if (entry.isDirectory()) {
-      // Đếm số item bên trong thư mục
+      // Đếm số item và tính dung lượng thư mục
       try {
-        const children = await fsPromises.readdir(fullPath);
-        folders.push({ name: entry.name, itemCount: children.length });
+        const children = await fsPromises.readdir(fullPath, { withFileTypes: true });
+        const directFiles = children.filter(c => !c.isDirectory()).length;
+        const directFolders = children.filter(c => c.isDirectory()).length;
+        const meta = await calcFolderMeta(fullPath);
+        folders.push({
+          name: entry.name,
+          itemCount: children.length,
+          fileCount: directFiles,
+          folderCount: directFolders,
+          totalSize: meta.totalSize,
+          totalFiles: meta.fileCount,
+          totalFolders: meta.folderCount
+        });
       } catch {
-        folders.push({ name: entry.name, itemCount: 0 });
+        folders.push({ name: entry.name, itemCount: 0, fileCount: 0, folderCount: 0, totalSize: 0, totalFiles: 0, totalFolders: 0 });
       }
     } else {
       const st = await fsPromises.stat(fullPath);
@@ -235,7 +275,7 @@ async function getFilesWithEtag(dir = '') {
   folders.sort((a, b) => a.name.localeCompare(b.name));
   fileEntries.sort((a, b) => b.mtime - a.mtime);
 
-  const raw = [...folders.map(f => `d:${f.name}`), ...fileEntries.map(f => `${f._rawName}:${f.mtime}`)].join('|');
+  const raw = [...folders.map(f => `d:${f.name}:${f.itemCount}:${f.totalSize}`), ...fileEntries.map(f => `${f._rawName}:${f.mtime}`)].join('|');
   const etag = `"${crypto.createHash("md5").update(raw).digest("hex").slice(0, 16)}"`;
 
   return {

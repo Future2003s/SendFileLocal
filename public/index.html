@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#f8fafc" />
+  <meta name="theme-color" content="#f0f4ff" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>LAN Share</title>
@@ -14,7 +14,8 @@
   <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/fill/style.css">
@@ -28,17 +29,31 @@
     :root {
       --safe-area-bottom: env(safe-area-inset-bottom, 0px);
       --safe-area-top: env(safe-area-inset-top, 0px);
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-dark: #4f46e5;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.3);
+      --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.06);
+      --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.06), 0 12px 40px rgba(0, 0, 0, 0.1);
+      --header-height: 64px;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       -webkit-tap-highlight-color: transparent;
       overscroll-behavior-y: none;
-      /* Ngăn pull-to-refresh mặc định gây khó chịu */
-      background-color: #f8fafc;
+      background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 30%, #f8fafc 60%, #f0fdf4 100%);
+      background-attachment: fixed;
+      min-height: 100dvh;
     }
 
-    /* Hide scrollbar for a cleaner mobile look but keep functionality */
+    /* ─── HIDE SCROLLBAR ─── */
     .hide-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -48,7 +63,7 @@
       scrollbar-width: none;
     }
 
-    /* Custom Scrollbar for desktop */
+    /* ─── CUSTOM SCROLLBAR (Desktop) ─── */
     @media (min-width: 768px) {
       ::-webkit-scrollbar {
         width: 6px;
@@ -60,16 +75,16 @@
       }
 
       ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
+        background: #c7d2fe;
         border-radius: 10px;
       }
 
       ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
+        background: #a5b4fc;
       }
     }
 
-    /* Modals & Animations */
+    /* ─── ANIMATIONS ─── */
     @keyframes slideUp {
       from {
         transform: translateY(100%);
@@ -85,22 +100,27 @@
     @keyframes fadeIn {
       from {
         opacity: 0;
+        transform: translateY(8px);
       }
 
       to {
         opacity: 1;
+        transform: translateY(0);
       }
     }
 
-    .modal-slide-up {
-      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
 
-    .modal-fade-in {
-      animation: fadeIn 0.2s ease-out forwards;
-    }
-
-    /* Toast Animation */
     @keyframes slideDownToast {
       from {
         transform: translate(-50%, -100%);
@@ -113,19 +133,186 @@
       }
     }
 
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    @keyframes pulse-glow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+      }
+
+      50% {
+        box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+      }
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
+    @keyframes gradient-rotate {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    @keyframes stagger-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-slide-up {
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .modal-fade-in {
+      animation: fadeIn 0.2s ease-out forwards;
+    }
+
     .toast-enter {
       animation: slideDownToast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    /* Text truncate for multi-line */
+    .animate-float {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    /* Staggered list animation — use style="--i:N" on elements */
+    .stagger-item {
+      animation: stagger-in 0.4s ease-out both;
+      animation-delay: calc(var(--i, 0) * 40ms);
+    }
+
+    /* Skeleton loading */
+    .skeleton {
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s ease infinite;
+      border-radius: 8px;
+    }
+
+    /* ─── TRUNCATE ─── */
     .line-clamp-2 {
       display: -webkit-box;
       -webkit-line-clamp: 2;
+      line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
 
-    /* File Group Section Headers */
+    /* ─── GLASSMORPHISM CARDS ─── */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: var(--card-shadow);
+    }
+
+    .glass-card-solid {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.6);
+      box-shadow: var(--card-shadow);
+    }
+
+    /* ─── HEADER ─── */
+    .premium-header {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(139, 92, 246, 0.05) 50%, rgba(168, 85, 247, 0.03) 100%);
+      backdrop-filter: blur(20px) saturate(1.5);
+      -webkit-backdrop-filter: blur(20px) saturate(1.5);
+      border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+      box-shadow: 0 1px 3px rgba(99, 102, 241, 0.04), 0 4px 20px rgba(99, 102, 241, 0.02);
+    }
+
+    .logo-icon {
+      background: var(--accent-gradient);
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35), 0 0 0 3px rgba(99, 102, 241, 0.08);
+    }
+
+    .logo-text {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .status-badge {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    /* ─── UPLOAD ZONE ─── */
+    .upload-zone {
+      position: relative;
+      border: 2px dashed transparent;
+      background-image:
+        linear-gradient(white, white),
+        linear-gradient(135deg, #c7d2fe, #ddd6fe, #e9d5ff, #c7d2fe);
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+      background-size: 100% 100%, 300% 300%;
+      animation: gradient-rotate 4s ease infinite;
+      transition: all 0.3s ease;
+    }
+
+    .upload-zone:hover {
+      background-image:
+        linear-gradient(rgba(238, 242, 255, 0.8), rgba(238, 242, 255, 0.8)),
+        linear-gradient(135deg, #818cf8, #a78bfa, #c084fc, #818cf8);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.12);
+    }
+
+    .upload-icon-container {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #eef2ff, #ede9fe);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .upload-zone:hover .upload-icon-container {
+      transform: scale(1.1) translateY(-2px);
+    }
+
+    /* ─── FILE GROUP HEADERS ─── */
     .group-header {
       display: flex;
       align-items: center;
@@ -133,16 +320,34 @@
       padding: 10px 16px;
       cursor: pointer;
       user-select: none;
-      transition: background-color 0.15s;
+      transition: all 0.2s ease;
       border-bottom: 1px solid #f1f5f9;
+      position: relative;
+    }
+
+    .group-header::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 0;
+      border-radius: 0 3px 3px 0;
+      background: var(--accent-gradient);
+      transition: height 0.2s ease;
+    }
+
+    .group-header:hover::before {
+      height: 60%;
     }
 
     .group-header:hover {
-      background-color: #f8fafc;
+      background-color: #fafbff;
     }
 
     .group-header:active {
-      background-color: #f1f5f9;
+      background-color: #f5f3ff;
     }
 
     @media (min-width: 768px) {
@@ -153,7 +358,7 @@
 
     .group-chevron {
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      color: #94a3b8;
+      color: #a5b4fc;
       font-size: 16px;
       flex-shrink: 0;
     }
@@ -174,25 +379,93 @@
       opacity: 0;
     }
 
-    /* Preview styles */
-    .preview-doc-content {
-      font-family: serif;
-      line-height: 1.6;
+    /* ─── FILE ROW ENHANCEMENTS ─── */
+    .file-row {
+      position: relative;
+      transition: all 0.2s ease;
     }
 
-    .preview-doc-content table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-bottom: 1em;
+    .file-row::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--accent-gradient);
+      border-radius: 0 3px 3px 0;
+      opacity: 0;
+      transition: opacity 0.2s ease;
     }
 
-    .preview-doc-content th,
-    .preview-doc-content td {
-      border: 1px solid #cbd5e1;
-      padding: 6px;
+    .file-row:hover::before {
+      opacity: 1;
     }
 
-    /* Excel Preview Table (SheetJS) */
+    .file-row:hover {
+      background: linear-gradient(90deg, rgba(238, 242, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%) !important;
+      transform: translateX(2px);
+    }
+
+    /* ─── FOLDER ROW ENHANCEMENTS ─── */
+    .folder-row {
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .folder-row::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(180deg, #f59e0b, #f97316);
+      border-radius: 0 3px 3px 0;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .folder-row:hover::before {
+      opacity: 1;
+    }
+
+    .folder-row:hover {
+      background: linear-gradient(90deg, rgba(255, 251, 235, 0.6) 0%, rgba(255, 255, 255, 0) 100%) !important;
+      transform: translateX(2px);
+    }
+
+    .folder-row.drag-over {
+      background: linear-gradient(90deg, rgba(254, 243, 199, 0.8) 0%, rgba(255, 255, 255, 0.4) 100%) !important;
+      outline: 2px dashed #f59e0b;
+      outline-offset: -2px;
+      border-radius: 8px;
+    }
+
+    .folder-row.drag-over .folder-drop-hint {
+      display: flex !important;
+    }
+
+    /* Folder metadata badges */
+    .folder-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .folder-meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+
+
     .xl-preview table {
       border-collapse: collapse;
       width: max-content;
@@ -210,26 +483,25 @@
 
     .xl-preview tr:first-child td,
     .xl-preview tr:first-child th {
-      background: #f1f5f9;
+      background: linear-gradient(135deg, #eef2ff, #f5f3ff);
       font-weight: 600;
-      color: #334155;
+      color: #4338ca;
       position: sticky;
       top: 0;
       z-index: 1;
     }
 
     .xl-preview tr:nth-child(even) {
-      background: #f8fafc;
+      background: #fafbff;
     }
 
     .xl-preview tr:hover {
-      background: #eff6ff;
+      background: #eef2ff;
     }
 
-    /* Mobile App-like structure */
+    /* ─── LAYOUT ─── */
     .app-container {
       height: 100dvh;
-      /* Dynamic viewport height cho iOS/Android */
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -239,10 +511,8 @@
       flex: 1;
       min-height: 0;
       overflow: hidden;
-      /* Overflow controlled per-tab on mobile */
     }
 
-    /* Mobile: each tab takes full area */
     @media (max-width: 767px) {
       .main-content {
         position: relative;
@@ -280,10 +550,257 @@
         padding-bottom: 2rem;
       }
     }
+
+    /* ─── SEARCH & SORT ─── */
+    .search-sort-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+      background: linear-gradient(180deg, rgba(238, 242, 255, 0.3) 0%, rgba(255, 255, 255, 0) 100%);
+    }
+
+    @media (min-width: 768px) {
+      .search-sort-bar {
+        padding: 12px 24px;
+      }
+    }
+
+    .search-input-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input-wrapper i {
+      position: absolute;
+      left: 12px;
+      color: #a5b4fc;
+      font-size: 16px;
+      pointer-events: none;
+      transition: color 0.2s;
+    }
+
+    .search-input-wrapper input {
+      width: 100%;
+      padding: 9px 10px 9px 36px;
+      border: 1.5px solid #e0e7ff;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #334155;
+      background: rgba(255, 255, 255, 0.8);
+      transition: all 0.25s ease;
+      outline: none;
+      box-shadow: inset 0 1px 2px rgba(99, 102, 241, 0.04);
+    }
+
+    .search-input-wrapper input:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 1px 2px rgba(99, 102, 241, 0.04);
+      background: white;
+    }
+
+    .search-input-wrapper input:focus+i,
+    .search-input-wrapper:focus-within i {
+      color: #6366f1;
+    }
+
+    .search-input-wrapper input::placeholder {
+      color: #a5b4fc;
+    }
+
+    .search-clear-btn {
+      position: absolute;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e0e7ff;
+      border: none;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #6366f1;
+      font-size: 11px;
+      transition: all 0.15s;
+    }
+
+    .search-clear-btn:hover {
+      background: #c7d2fe;
+    }
+
+    .search-clear-btn.visible {
+      display: flex;
+    }
+
+    .sort-dropdown {
+      position: relative;
+    }
+
+    .sort-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 9px 14px;
+      border: 1.5px solid #e0e7ff;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.8);
+      color: #4338ca;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(99, 102, 241, 0.04);
+    }
+
+    .sort-btn:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+
+    .sort-btn i {
+      font-size: 14px;
+    }
+
+    .sort-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      min-width: 190px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(99, 102, 241, 0.1);
+      border-radius: 14px;
+      box-shadow: 0 10px 40px rgba(99, 102, 241, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+      z-index: 50;
+      padding: 4px;
+      display: none;
+      animation: fadeInScale 0.15s ease-out;
+    }
+
+    .sort-menu.open {
+      display: block;
+    }
+
+    .sort-menu button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 12px;
+      border: none;
+      background: transparent;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: all 0.15s;
+    }
+
+    .sort-menu button:hover {
+      background: #eef2ff;
+      color: #4338ca;
+    }
+
+    .sort-menu button.active {
+      background: linear-gradient(135deg, #eef2ff, #ede9fe);
+      color: #4338ca;
+      font-weight: 600;
+    }
+
+    .sort-menu button i {
+      font-size: 16px;
+      width: 20px;
+      text-align: center;
+    }
+
+    /* ─── NO RESULTS ─── */
+    .no-results {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+      color: #94a3b8;
+    }
+
+    .no-results i {
+      font-size: 48px;
+      margin-bottom: 12px;
+      color: #c7d2fe;
+    }
+
+    .no-results p {
+      font-size: 14px;
+      font-weight: 600;
+      color: #6366f1;
+    }
+
+    .no-results span {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+
+
+    /* ─── PREMIUM BUTTONS ─── */
+    .btn-premium {
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-premium:active {
+      transform: scale(0.95);
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: white;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+      transform: translateY(-1px);
+    }
+
+    /* ─── BOTTOM NAV PREMIUM ─── */
+    .bottom-nav-item.active .nav-indicator {
+      background: linear-gradient(135deg, #eef2ff, #ede9fe) !important;
+    }
+
+    .bottom-nav-item.active {
+      color: #4338ca !important;
+    }
+
+    /* ─── FAB PREMIUM ─── */
+    .fab-premium {
+      background: var(--accent-gradient) !important;
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4), 0 0 0 4px rgba(99, 102, 241, 0.08) !important;
+    }
+
+    .fab-premium:hover {
+      box-shadow: 0 12px 40px rgba(99, 102, 241, 0.5), 0 0 0 6px rgba(99, 102, 241, 0.12) !important;
+    }
   </style>
+
 </head>
 
-<body class="text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900">
+<body class="text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-900">
 
   <!-- TOAST NOTIFICATION (Nổi ở trên) -->
   <div id="toast-container"
@@ -299,12 +816,12 @@
 
     <!-- HEADER -->
     <header
-      class="bg-white/90 backdrop-blur-xl md:rounded-3xl shadow-sm border-b md:border border-slate-200/60 p-4 md:px-6 md:py-4 flex items-center justify-between gap-4 z-40 sticky top-0 pt-[calc(1rem+var(--safe-area-top))] md:pt-4">
+      class="premium-header md:rounded-3xl p-4 md:px-6 md:py-4 flex items-center justify-between gap-4 z-40 sticky top-0 pt-[calc(1rem+var(--safe-area-top))] md:pt-4">
       <div class="flex items-center gap-2">
-        <div class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-inner">
+        <div class="w-10 h-10 logo-icon rounded-xl flex items-center justify-center text-white">
           <i class="ph-fill ph-hard-drives text-2xl"></i>
         </div>
-        <h1 class="text-xl font-bold text-slate-900 hidden sm:block">LAN Share</h1>
+        <h1 class="text-xl font-extrabold logo-text hidden sm:block">LAN Share</h1>
       </div>
 
       <!-- Auth Zone -->
@@ -320,14 +837,14 @@
         </div>
 
         <button id="btn-logout-pin" onclick="logoutPin()"
-          class="hidden items-center justify-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 rounded-xl text-sm font-semibold active:scale-95 transition-transform whitespace-nowrap"
+          class="hidden items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-semibold active:scale-95 transition-transform whitespace-nowrap status-badge"
           title="Đổi mã PIN">
           <i class="ph-fill ph-check-circle text-lg"></i>
           <span class="hidden sm:inline">Đã mở khóa</span>
         </button>
 
         <button onclick="refresh(true)"
-          class="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl active:scale-95 transition-all shrink-0">
+          class="w-10 h-10 flex items-center justify-center bg-indigo-50 text-indigo-500 hover:bg-indigo-100 rounded-xl active:scale-95 transition-all shrink-0">
           <i class="ph ph-arrows-clockwise text-xl"></i>
         </button>
       </div>
@@ -340,40 +857,41 @@
       <section id="tab-files" class="w-full flex flex-col md:w-2/3 md:h-auto">
 
         <!-- Desktop Kéo Thả (Ẩn trên mobile) -->
-        <div class="hidden md:block bg-white rounded-3xl shadow-sm border border-slate-100 p-6 mb-6">
+        <div class="hidden md:block glass-card-solid rounded-3xl p-6 mb-6">
           <label id="drop" for="picker-desktop"
-            class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-200 border-dashed rounded-2xl bg-slate-50 hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer group">
-            <div class="p-3 bg-white rounded-full shadow-sm mb-2 group-hover:scale-110 transition-transform">
-              <i class="ph ph-cloud-arrow-up text-2xl text-blue-500"></i>
+            class="upload-zone flex flex-col items-center justify-center w-full h-36 rounded-2xl cursor-pointer group">
+            <div class="upload-icon-container mb-3 animate-float">
+              <i class="ph ph-cloud-arrow-up text-2xl text-indigo-500"></i>
             </div>
-            <p class="text-sm text-slate-600 font-medium"><span class="text-blue-600">Chọn file</span> hoặc kéo thả vào
+            <p class="text-sm text-slate-500 font-medium"><span class="text-indigo-600 font-semibold">Chọn file</span>
+              hoặc kéo thả vào
               đây</p>
           </label>
           <input id="picker-desktop" type="file" multiple class="hidden" onchange="upload(this)" />
         </div>
 
         <!-- File List Container -->
-        <div class="bg-white md:rounded-3xl shadow-sm md:border border-slate-100 flex-1 flex flex-col min-h-[50vh]">
+        <div class="glass-card-solid md:rounded-3xl flex-1 flex flex-col min-h-[50vh]">
 
           <!-- Toolbars -->
           <div
-            class="px-4 py-3 border-b border-slate-100 bg-white/80 backdrop-blur z-20 sticky top-0 md:static flex items-center justify-between">
+            class="px-4 py-3 border-b border-indigo-50 bg-white/90 backdrop-blur-xl z-20 sticky top-0 md:static flex items-center justify-between">
             <div class="flex items-center gap-2">
               <h2 class="font-bold text-slate-800 text-lg">Tệp tin</h2>
               <span id="file-count"
-                class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">0</span>
+                class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-2 py-1 rounded-md">0</span>
             </div>
 
             <div class="flex items-center gap-1.5">
               <!-- Nút tạo thư mục -->
               <button onclick="promptCreateFolder()"
-                class="w-9 h-9 flex items-center justify-center bg-amber-50 text-amber-600 rounded-lg active:scale-95 transition-transform"
+                class="w-9 h-9 flex items-center justify-center bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 active:scale-90 transition-all"
                 title="Tạo thư mục mới">
                 <i class="ph ph-folder-plus text-lg"></i>
               </button>
               <!-- Nút chia sẻ link -->
               <button onclick="shareCurrentLink()"
-                class="w-9 h-9 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-lg active:scale-95 transition-transform"
+                class="w-9 h-9 flex items-center justify-center bg-violet-50 text-violet-600 rounded-xl hover:bg-violet-100 active:scale-90 transition-all"
                 title="Chia sẻ đường dẫn">
                 <i class="ph ph-share-network text-lg"></i>
               </button>
@@ -407,6 +925,45 @@
             <!-- Render bởi JS -->
           </div>
 
+          <!-- Search & Sort Bar -->
+          <div class="search-sort-bar">
+            <div class="search-input-wrapper">
+              <i class="ph ph-magnifying-glass"></i>
+              <input id="search-input" type="text" placeholder="Tìm kiếm file, thư mục..."
+                oninput="handleSearchInput()" />
+              <button class="search-clear-btn" id="search-clear" onclick="clearSearch()">
+                <i class="ph-bold ph-x"></i>
+              </button>
+            </div>
+            <div class="sort-dropdown">
+              <button class="sort-btn" onclick="toggleSortMenu(event)">
+                <i class="ph ph-sort-ascending"></i>
+                <span id="sort-label">Mới nhất</span>
+                <i class="ph ph-caret-down" style="font-size:11px"></i>
+              </button>
+              <div id="sort-menu" class="sort-menu">
+                <button onclick="setSort('date-desc')" class="active" data-sort="date-desc">
+                  <i class="ph ph-clock-countdown"></i> Mới nhất
+                </button>
+                <button onclick="setSort('date-asc')" data-sort="date-asc">
+                  <i class="ph ph-clock-counter-clockwise"></i> Cũ nhất
+                </button>
+                <button onclick="setSort('name-asc')" data-sort="name-asc">
+                  <i class="ph ph-sort-ascending"></i> Tên A → Z
+                </button>
+                <button onclick="setSort('name-desc')" data-sort="name-desc">
+                  <i class="ph ph-sort-descending"></i> Tên Z → A
+                </button>
+                <button onclick="setSort('size-desc')" data-sort="size-desc">
+                  <i class="ph ph-arrow-fat-down"></i> Lớn nhất
+                </button>
+                <button onclick="setSort('size-asc')" data-sort="size-asc">
+                  <i class="ph ph-arrow-fat-up"></i> Nhỏ nhất
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Danh sách -->
           <div class="flex-1 overflow-x-hidden hide-scrollbar">
             <!-- Table Header (Desktop only) -->
@@ -428,10 +985,10 @@
 
       <!-- TAB 2: CLIPBOARD (Chat Style) -->
       <section id="tab-clipboard"
-        class="w-full flex-col md:w-1/3 bg-white md:rounded-3xl shadow-sm md:border border-slate-100 overflow-hidden relative md:flex">
-        <div class="px-4 py-3 border-b border-slate-100 bg-white/80 backdrop-blur z-10 sticky top-0">
+        class="w-full flex-col md:w-1/3 glass-card-solid md:rounded-3xl overflow-hidden relative md:flex">
+        <div class="px-4 py-3 border-b border-indigo-50 bg-white/90 backdrop-blur-xl z-10 sticky top-0">
           <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
-            <i class="ph-fill ph-chat-centered-text text-blue-500"></i> Bảng tạm
+            <i class="ph-fill ph-chat-centered-text text-indigo-500"></i> Bảng tạm
           </h2>
         </div>
 
@@ -452,7 +1009,7 @@
               placeholder="Nhập text để dán..." onkeydown="handleClipboardKeydown(event)"
               oninput="handleClipboardInput()"></textarea>
             <button id="btn-save-clipboard" onclick="saveClipboard()"
-              class="w-10 h-10 shrink-0 bg-blue-500 text-white rounded-xl flex items-center justify-center shadow-md active:scale-90 transition-transform mb-0.5 mr-0.5">
+              class="w-10 h-10 shrink-0 bg-gradient-to-br from-indigo-500 to-purple-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 active:scale-90 transition-all mb-0.5 mr-0.5 hover:shadow-indigo-500/40">
               <i class="ph-fill ph-paper-plane-tilt text-lg"></i>
             </button>
           </div>
@@ -465,18 +1022,18 @@
 
   <!-- FLOATING ACTION BUTTON (Upload - Mobile Only) -->
   <label id="fab-upload" for="picker-mobile"
-    class="md:hidden fixed z-40 right-4 bottom-[calc(80px+var(--safe-area-bottom))] w-14 h-14 bg-blue-600 text-white rounded-full shadow-[0_8px_30px_rgb(37,99,235,0.4)] flex items-center justify-center text-2xl active:scale-90 transition-transform cursor-pointer">
+    class="md:hidden fixed z-40 right-4 bottom-[calc(80px+var(--safe-area-bottom))] w-14 h-14 fab-premium text-white rounded-full flex items-center justify-center text-2xl active:scale-90 transition-all cursor-pointer">
     <i class="ph ph-plus"></i>
     <input id="picker-mobile" type="file" multiple class="hidden" onchange="upload(this)" />
   </label>
 
   <!-- BOTTOM NAVIGATION (Mobile Only) -->
   <nav
-    class="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-slate-200/50 z-50 pb-[var(--safe-area-bottom)]">
+    class="md:hidden fixed bottom-0 left-0 w-full bg-white/85 backdrop-blur-2xl border-t border-indigo-100/30 z-50 pb-[var(--safe-area-bottom)]">
     <div class="flex px-2 py-1">
       <button onclick="switchTab('files')" id="nav-files"
-        class="flex-1 flex flex-col items-center justify-center py-2 text-blue-600 transition-colors">
-        <div class="px-5 py-1 rounded-full bg-blue-100 mb-1 transition-colors nav-indicator">
+        class="flex-1 flex flex-col items-center justify-center py-2 text-indigo-600 transition-colors">
+        <div class="px-5 py-1 rounded-full bg-indigo-100 mb-1 transition-colors nav-indicator">
           <i class="ph-fill ph-folder text-xl"></i>
         </div>
         <span class="text-[10px] font-semibold">Tệp tin</span>
@@ -509,7 +1066,7 @@
         </div>
         <div class="flex items-center gap-2 pl-2">
           <a id="preview-download-btn" href="#"
-            class="h-10 px-4 bg-blue-50 text-blue-600 font-bold text-sm rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform">
+            class="h-10 px-4 bg-indigo-50 text-indigo-600 font-bold text-sm rounded-full flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-indigo-100">
             <i class="ph ph-download-simple text-lg"></i> <span class="hidden sm:inline">Tải về</span>
           </a>
           <button onclick="closePreviewModal()"
@@ -544,7 +1101,7 @@
         <button onclick="closeDeleteModal()"
           class="flex-1 py-3.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 active:scale-95 transition-transform">Hủy</button>
         <button onclick="executeDelete()"
-          class="flex-1 py-3.5 rounded-xl font-semibold text-white bg-red-600 active:scale-95 transition-transform shadow-md shadow-red-500/20">Xóa
+          class="flex-1 py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-rose-500 to-red-500 active:scale-95 transition-all shadow-lg shadow-rose-500/20 hover:shadow-rose-500/40">Xóa
           ngay</button>
       </div>
     </div>
@@ -569,7 +1126,7 @@
         <button onclick="closeFolderModal()"
           class="flex-1 py-3.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 active:scale-95 transition-transform">Hủy</button>
         <button onclick="executeFolderCreate()"
-          class="flex-1 py-3.5 rounded-xl font-semibold text-white bg-amber-500 active:scale-95 transition-transform shadow-md shadow-amber-500/20">Tạo
+          class="flex-1 py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-amber-400 to-orange-500 active:scale-95 transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40">Tạo
           thư mục</button>
       </div>
     </div>
@@ -946,108 +1503,37 @@
       return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${u[i]}`;
     }
 
+    const _fpGroups = [
+      ['ph-file-pdf text-red-500 bg-red-50', 'pdf'],
+      ['ph-file-doc text-blue-600 bg-blue-50', 'doc,docx'],
+      ['ph-file-xls text-green-600 bg-green-50', 'xls,xlsx'],
+      ['ph-file-csv text-green-600 bg-green-50', 'csv'],
+      ['ph-file-ppt text-orange-600 bg-orange-50', 'ppt,pptx'],
+      ['ph-file-text text-slate-600 bg-slate-100', 'txt'],
+      ['ph-image text-purple-500 bg-purple-50', 'png,jpg,jpeg,webp,gif,svg,bmp,ico'],
+      ['ph-file-archive text-orange-500 bg-orange-50', 'zip,rar,7z,tar,gz'],
+      ['ph-file-video text-pink-500 bg-pink-50', 'mp4,webm,avi,mov,mkv'],
+      ['ph-file-audio text-yellow-600 bg-yellow-50', 'mp3,wav,ogg,flac,aac,m4a'],
+    ];
+    const _fpMap = {};
+    for (const [info, exts] of _fpGroups) {
+      const [icon, color, bg] = info.split(' ');
+      for (const e of exts.split(',')) _fpMap[e] = { icon, color, bg };
+    }
     function fileProps(filename) {
-      const ext = (filename.split(".").pop() || "").toLowerCase();
-      const map = {
-        pdf: { icon: "ph-file-pdf", color: "text-red-500", bg: "bg-red-50" },
-        doc: { icon: "ph-file-doc", color: "text-blue-600", bg: "bg-blue-50" },
-        docx: { icon: "ph-file-doc", color: "text-blue-600", bg: "bg-blue-50" },
-        xls: { icon: "ph-file-xls", color: "text-green-600", bg: "bg-green-50" },
-        xlsx: { icon: "ph-file-xls", color: "text-green-600", bg: "bg-green-50" },
-        ppt: { icon: "ph-file-ppt", color: "text-orange-600", bg: "bg-orange-50" },
-        pptx: { icon: "ph-file-ppt", color: "text-orange-600", bg: "bg-orange-50" },
-        txt: { icon: "ph-file-text", color: "text-slate-600", bg: "bg-slate-100" },
-        csv: { icon: "ph-file-csv", color: "text-green-600", bg: "bg-green-50" },
-        png: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
-        jpg: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
-        jpeg: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
-        webp: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
-        gif: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
-        svg: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
-        bmp: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
-        ico: { icon: "ph-image", color: "text-purple-500", bg: "bg-purple-50" },
-        zip: { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
-        rar: { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
-        '7z': { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
-        tar: { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
-        gz: { icon: "ph-file-archive", color: "text-orange-500", bg: "bg-orange-50" },
-        mp4: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
-        webm: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
-        avi: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
-        mov: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
-        mkv: { icon: "ph-file-video", color: "text-pink-500", bg: "bg-pink-50" },
-        mp3: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
-        wav: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
-        ogg: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
-        flac: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
-        aac: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
-        m4a: { icon: "ph-file-audio", color: "text-yellow-600", bg: "bg-yellow-50" },
-      };
-      return map[ext] || { icon: "ph-file", color: "text-slate-500", bg: "bg-slate-100" };
+      const ext = (filename.split('.').pop() || '').toLowerCase();
+      return _fpMap[ext] || { icon: 'ph-file', color: 'text-slate-500', bg: 'bg-slate-100' };
     }
 
     // ─── FILE CATEGORY GROUPING ──────────────────────────────────────────
+    const _s = s => new Set(s.split(','));
     const FILE_CATEGORIES = [
-      {
-        key: 'images',
-        label: 'Hình ảnh',
-        icon: 'ph-image',
-        color: 'text-purple-500',
-        bg: 'bg-purple-50',
-        badgeBg: 'bg-purple-100',
-        badgeText: 'text-purple-700',
-        exts: new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico', 'tiff', 'tif'])
-      },
-      {
-        key: 'documents',
-        label: 'Tài liệu',
-        icon: 'ph-file-text',
-        color: 'text-blue-600',
-        bg: 'bg-blue-50',
-        badgeBg: 'bg-blue-100',
-        badgeText: 'text-blue-700',
-        exts: new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'rtf', 'odt', 'ods', 'json', 'xml', 'html', 'css', 'js', 'md'])
-      },
-      {
-        key: 'videos',
-        label: 'Video',
-        icon: 'ph-file-video',
-        color: 'text-pink-500',
-        bg: 'bg-pink-50',
-        badgeBg: 'bg-pink-100',
-        badgeText: 'text-pink-700',
-        exts: new Set(['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', '3gp'])
-      },
-      {
-        key: 'audio',
-        label: 'Âm thanh',
-        icon: 'ph-file-audio',
-        color: 'text-yellow-600',
-        bg: 'bg-yellow-50',
-        badgeBg: 'bg-yellow-100',
-        badgeText: 'text-yellow-700',
-        exts: new Set(['mp3', 'wav', 'ogg', 'flac', 'aac', 'wma', 'm4a', 'opus'])
-      },
-      {
-        key: 'archives',
-        label: 'Nén / Archive',
-        icon: 'ph-file-archive',
-        color: 'text-orange-500',
-        bg: 'bg-orange-50',
-        badgeBg: 'bg-orange-100',
-        badgeText: 'text-orange-700',
-        exts: new Set(['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso'])
-      },
-      {
-        key: 'other',
-        label: 'Khác',
-        icon: 'ph-file',
-        color: 'text-slate-500',
-        bg: 'bg-slate-100',
-        badgeBg: 'bg-slate-200',
-        badgeText: 'text-slate-600',
-        exts: null // catch-all
-      }
+      { key: 'images', label: 'Hình ảnh', icon: 'ph-image', color: 'text-purple-500', bg: 'bg-purple-50', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', exts: _s('png,jpg,jpeg,webp,gif,svg,bmp,ico,tiff,tif') },
+      { key: 'documents', label: 'Tài liệu', icon: 'ph-file-text', color: 'text-blue-600', bg: 'bg-blue-50', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', exts: _s('pdf,doc,docx,xls,xlsx,ppt,pptx,txt,csv,rtf,odt,ods,json,xml,html,css,js,md') },
+      { key: 'videos', label: 'Video', icon: 'ph-file-video', color: 'text-pink-500', bg: 'bg-pink-50', badgeBg: 'bg-pink-100', badgeText: 'text-pink-700', exts: _s('mp4,webm,avi,mov,mkv,flv,wmv,3gp') },
+      { key: 'audio', label: 'Âm thanh', icon: 'ph-file-audio', color: 'text-yellow-600', bg: 'bg-yellow-50', badgeBg: 'bg-yellow-100', badgeText: 'text-yellow-700', exts: _s('mp3,wav,ogg,flac,aac,wma,m4a,opus') },
+      { key: 'archives', label: 'Nén / Archive', icon: 'ph-file-archive', color: 'text-orange-500', bg: 'bg-orange-50', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', exts: _s('zip,rar,7z,tar,gz,bz2,xz,iso') },
+      { key: 'other', label: 'Khác', icon: 'ph-file', color: 'text-slate-500', bg: 'bg-slate-100', badgeBg: 'bg-slate-200', badgeText: 'text-slate-600', exts: null }
     ];
 
     // Trạng thái collapse cho mỗi nhóm (mặc định mở)
@@ -1206,50 +1692,174 @@
     function buildFolderRow(folder) {
       const folderName = folder.name;
       const targetDir = currentDir ? `${currentDir}/${folderName}` : folderName;
+      const sizeText = folder.totalSize > 0 ? fmt(folder.totalSize) : '';
 
       const div = document.createElement('div');
-      div.className = 'folder-row group flex items-center p-3 md:px-6 md:py-4 hover:bg-amber-50/50 cursor-pointer transition-colors border-b border-slate-50 last:border-0';
+      div.className = 'folder-row group flex items-center p-3 md:px-6 md:py-4 hover:bg-amber-50/50 cursor-pointer transition-all border-b border-slate-50 last:border-0 relative';
+      div.dataset.folderDir = targetDir;
       div.onclick = (e) => {
         if (e.target.closest('button')) return;
         navigateToDir(targetDir);
       };
 
-      div.innerHTML = `
-        <!-- Spacer for checkbox alignment (Desktop) -->
-        <div class="hidden md:flex w-10 justify-center shrink-0"></div>
+      // Drag-and-drop into folder
+      div.addEventListener('dragenter', (e) => { e.preventDefault(); e.stopPropagation(); div.classList.add('drag-over'); });
+      div.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; });
+      div.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); if (!div.contains(e.relatedTarget)) div.classList.remove('drag-over'); });
+      div.addEventListener('drop', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        div.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) uploadToFolder(files, targetDir);
+      });
 
-        <!-- Icon & Info -->
-        <div class="flex-1 min-w-0 flex items-center gap-3 md:px-4">
-          <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-            <i class="ph-fill ph-folder text-amber-500 text-2xl"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <h3 class="font-semibold text-slate-800 text-sm md:text-base truncate pr-2 group-hover:text-amber-600 transition-colors">${folderName}</h3>
-            <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
-              <i class="ph ph-files text-xs"></i>
-              <span>${folder.itemCount} mục</span>
-            </div>
-          </div>
-        </div>
+      const iconBg = folder.itemCount > 0 ? 'bg-amber-50' : 'bg-slate-50';
+      const iconColor = folder.itemCount > 0 ? 'text-amber-500' : 'text-slate-300';
+      let metaBadges = '<span class="folder-meta-badge bg-amber-50 text-amber-600"><i class="ph ph-stack text-xs"></i> ' + folder.itemCount + ' m\u1ee5c</span>';
+      if (folder.fileCount > 0) metaBadges += '<span class="folder-meta-badge bg-blue-50 text-blue-500"><i class="ph ph-file text-xs"></i> ' + folder.fileCount + '</span>';
+      if (folder.folderCount > 0) metaBadges += '<span class="folder-meta-badge bg-purple-50 text-purple-500"><i class="ph ph-folder text-xs"></i> ' + folder.folderCount + '</span>';
 
-        <!-- Size placeholder (Desktop) -->
-        <div class="hidden md:block w-24 text-right text-slate-400 text-sm font-medium">—</div>
-
-        <!-- Actions -->
-        <div class="flex items-center gap-1 shrink-0 ml-2 md:w-32 md:justify-center">
-          <button onclick="event.stopPropagation(); deleteFolder('${folderName.replace(/'/g, "\\'")}')" class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors" title="Xóa thư mục">
-            <i class="ph ph-trash text-lg"></i>
-          </button>
-          <div class="w-9 h-9 flex items-center justify-center text-slate-300">
-            <i class="ph ph-caret-right text-lg"></i>
-          </div>
-        </div>
-      `;
+      div.innerHTML = '<div class="hidden md:flex w-10 justify-center shrink-0"></div>' +
+        '<div class="flex-1 min-w-0 flex items-center gap-3 md:px-4">' +
+        '<div class="w-12 h-12 rounded-2xl ' + iconBg + ' flex items-center justify-center shrink-0 transition-colors group-hover:bg-amber-100">' +
+        '<i class="ph-fill ph-folder ' + iconColor + ' text-2xl"></i>' +
+        '</div>' +
+        '<div class="flex-1 min-w-0">' +
+        '<h3 class="font-semibold text-slate-800 text-sm md:text-base truncate pr-2 group-hover:text-amber-600 transition-colors">' + folderName + '</h3>' +
+        '<div class="folder-meta mt-0.5">' + metaBadges + '</div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="hidden md:block w-24 text-right text-slate-400 text-sm font-medium">' + (sizeText || '\u2014') + '</div>' +
+        '<div class="flex items-center gap-1 shrink-0 ml-2 md:w-32 md:justify-center">' +
+        '<button onclick="event.stopPropagation(); deleteFolder(\'' + folderName.replace(/'/g, "\\'") + '\')" class="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors" title="X\u00f3a th\u01b0 m\u1ee5c"><i class="ph ph-trash text-lg"></i></button>' +
+        '<div class="w-9 h-9 flex items-center justify-center text-slate-300 group-hover:text-amber-500 transition-colors"><i class="ph ph-caret-right text-lg"></i></div>' +
+        '</div>' +
+        '<div class="folder-drop-hint hidden absolute inset-0 bg-amber-400/10 rounded-lg items-center justify-center pointer-events-none">' +
+        '<span class="text-amber-600 text-xs font-bold flex items-center gap-1"><i class="ph ph-upload-simple"></i> Th\u1ea3 file v\u00e0o \u0111\u00e2y</span>' +
+        '</div>';
       return div;
     }
 
+
+
+    // ─── SEARCH / SORT / FILTER ──────────────────────────────────────
+    let currentSearchTerm = '';
+    let currentSortMode = 'date-desc';
+    let _searchTimer = null;
+
+    function handleSearchInput() {
+      clearTimeout(_searchTimer);
+      const input = $('search-input');
+      const clearBtn = $('search-clear');
+      currentSearchTerm = input.value.trim().toLowerCase();
+      clearBtn.classList.toggle('visible', input.value.length > 0);
+      _searchTimer = setTimeout(() => {
+        renderFiles(currentFiles, currentFolders);
+      }, 150);
+    }
+
+    function clearSearch() {
+      $('search-input').value = '';
+      currentSearchTerm = '';
+      $('search-clear').classList.remove('visible');
+      renderFiles(currentFiles, currentFolders);
+    }
+
+    function toggleSortMenu(e) {
+      e.stopPropagation();
+      const menu = $('sort-menu');
+      menu.classList.toggle('open');
+      // Close on outside click
+      if (menu.classList.contains('open')) {
+        setTimeout(() => {
+          document.addEventListener('click', closeSortMenu, { once: true });
+        }, 0);
+      }
+    }
+
+    function closeSortMenu() {
+      $('sort-menu').classList.remove('open');
+    }
+
+    function setSort(mode) {
+      currentSortMode = mode;
+      closeSortMenu();
+      // Update active state
+      document.querySelectorAll('#sort-menu button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sort === mode);
+      });
+      // Update label
+      const labels = {
+        'date-desc': 'Mới nhất', 'date-asc': 'Cũ nhất',
+        'name-asc': 'Tên A→Z', 'name-desc': 'Tên Z→A',
+        'size-desc': 'Lớn nhất', 'size-asc': 'Nhỏ nhất'
+      };
+      $('sort-label').textContent = labels[mode] || mode;
+      renderFiles(currentFiles, currentFolders);
+    }
+
+    function sortFiles(files) {
+      const sorted = [...files];
+      switch (currentSortMode) {
+        case 'date-desc': sorted.sort((a, b) => (b.mtime || 0) - (a.mtime || 0)); break;
+        case 'date-asc': sorted.sort((a, b) => (a.mtime || 0) - (b.mtime || 0)); break;
+        case 'name-asc': sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+        case 'name-desc': sorted.sort((a, b) => b.name.localeCompare(a.name)); break;
+        case 'size-desc': sorted.sort((a, b) => (b.size || 0) - (a.size || 0)); break;
+        case 'size-asc': sorted.sort((a, b) => (a.size || 0) - (b.size || 0)); break;
+      }
+      return sorted;
+    }
+
+    // ─── SHARED UPLOAD ────────────────────────────────────────────────────
+    async function doUpload(fileList, targetDir, inputEl) {
+      const fd = new FormData();
+      for (const f of fileList) fd.append('files', new File([f], f.name.normalize('NFC'), { type: f.type }));
+
+      const dirLabel = targetDir || 'thư mục gốc';
+      showStatus(`Đang tải ${fileList.length} file vào ${dirLabel}...`, 'loading');
+      try {
+        const pinVal = headers()['X-PIN'] || '';
+        const params = new URLSearchParams();
+        if (pinVal) params.set('pin', pinVal);
+        if (targetDir) params.set('dir', targetDir);
+        const qs = params.toString();
+        const res = await safeFetch(`/api/upload${qs ? '?' + qs : ''}`, { method: 'POST', body: fd, headers: headers() });
+        if (!res.ok) showStatus('Lỗi tải lên', 'error');
+        else {
+          showStatus(`Đã tải lên ${fileList.length} file thành công!`, 'success');
+          if (inputEl) inputEl.value = '';
+          lastEtag = null;
+          refresh(true);
+        }
+      } catch (e) {
+        showStatus('Mất kết nối', 'error');
+      }
+    }
+    function uploadToFolder(fileList, targetDir) { return doUpload(fileList, targetDir); }
+
     function renderFiles(files, folders = []) {
       const tb = $("list");
+
+      // Apply search filter
+      let filteredFolders = folders;
+      let filteredFiles = files;
+      if (currentSearchTerm) {
+        filteredFolders = folders.filter(f => f.name.toLowerCase().includes(currentSearchTerm));
+        filteredFiles = files.filter(f => f.name.toLowerCase().includes(currentSearchTerm));
+      }
+
+      // Apply sorting to files
+      filteredFiles = sortFiles(filteredFiles);
+
+      // Sort folders by name (or totalSize if sorting by size)
+      if (currentSortMode === 'size-desc') {
+        filteredFolders = [...filteredFolders].sort((a, b) => (b.totalSize || 0) - (a.totalSize || 0));
+      } else if (currentSortMode === 'size-asc') {
+        filteredFolders = [...filteredFolders].sort((a, b) => (a.totalSize || 0) - (b.totalSize || 0));
+      } else if (currentSortMode === 'name-desc') {
+        filteredFolders = [...filteredFolders].sort((a, b) => b.name.localeCompare(a.name));
+      }
 
       if (files.length === 0 && folders.length === 0) {
         tb.innerHTML = `
@@ -1263,20 +1873,31 @@
         return;
       }
 
+      // Search yielded no results
+      if (currentSearchTerm && filteredFiles.length === 0 && filteredFolders.length === 0) {
+        tb.innerHTML = `
+        <div class="no-results">
+          <i class="ph ph-magnifying-glass"></i>
+          <p>Kh\u00f4ng t\u00ecm th\u1ea5y k\u1ebft qu\u1ea3</p>
+          <span>Th\u1eed t\u00ecm v\u1edbi t\u1eeb kh\u00f3a kh\u00e1c</span>
+        </div>`;
+        return;
+      }
+
       const frag = document.createDocumentFragment();
 
       // Render folders first
-      if (folders.length > 0) {
-        for (const folder of folders) {
+      if (filteredFolders.length > 0) {
+        for (const folder of filteredFolders) {
           frag.appendChild(buildFolderRow(folder));
         }
       }
 
-      // Nhóm file theo danh mục
-      if (files.length > 0) {
+      // Group files by category
+      if (filteredFiles.length > 0) {
         const groups = new Map();
         for (const cat of FILE_CATEGORIES) groups.set(cat.key, []);
-        for (const f of files) {
+        for (const f of filteredFiles) {
           const cat = getFileCategory(f.name);
           groups.get(cat.key).push(f);
         }
@@ -1318,6 +1939,7 @@
       tb.innerHTML = '';
       tb.appendChild(frag);
     }
+
 
     // ─── REFRESH ─────────────────────────────────────────────────────────────
     function debouncedRefresh() { clearTimeout(_refreshTimer); _refreshTimer = setTimeout(() => refresh(), 300); }
@@ -1512,35 +2134,11 @@
       el.style.height = Math.min(el.scrollHeight, 120) + "px";
     }
 
-    // ─── UPLOAD ──────────────────────────────────────────────────────────────
-    async function upload(inputEl) {
+    // ─── UPLOAD (delegates to shared doUpload) ────────────────────────────
+    function upload(inputEl) {
       const files = inputEl.files;
       if (!files?.length) return;
-
-      const fd = new FormData();
-      for (const f of files) fd.append("files", new File([f], f.name.normalize("NFC"), { type: f.type }));
-
-      showStatus(`Đang tải lên ${files.length} file...`, "loading");
-
-      try {
-        const pinVal = headers()["X-PIN"] || "";
-        const params = new URLSearchParams();
-        if (pinVal) params.set('pin', pinVal);
-        if (currentDir) params.set('dir', currentDir);
-        const qs = params.toString();
-        const uploadUrl = `/api/upload${qs ? '?' + qs : ''}`;
-        const res = await safeFetch(uploadUrl, { method: "POST", body: fd, headers: headers() });
-
-        if (!res.ok) showStatus("Lỗi tải lên", "error");
-        else {
-          showStatus("Tải lên thành công!", "success");
-          inputEl.value = "";
-          lastEtag = null;
-          refresh();
-        }
-      } catch (e) {
-        showStatus("Mất kết nối", "error");
-      }
+      return doUpload(files, currentDir, inputEl);
     }
 
     // ─── MODALS PREVIEW & DELETE ──────────────────────────────────────────────
@@ -1679,25 +2277,17 @@
       setTimeout(() => { modal.classList.add("hidden"); $("preview-body").innerHTML = ""; }, 300);
     }
 
-    function openDeleteModal(encName, fileName) {
+    function _showDeleteModal(files, label) {
       _pendingFolderDelete = null;
-      currentFilesToDelete = [{ encName, name: fileName }];
+      currentFilesToDelete = files;
       $('delete-message').textContent = 'Bạn có chắc chắn muốn xóa?';
-      $("delete-filename").textContent = fileName;
-      const modal = $("delete-modal");
-      modal.classList.remove("hidden");
-      setTimeout(() => { modal.classList.remove("opacity-0"); }, 10);
+      $('delete-filename').textContent = label;
+      const modal = $('delete-modal');
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
     }
-
-    function openDeleteSelectedModal() {
-      _pendingFolderDelete = null;
-      currentFilesToDelete = Array.from(selectedFiles).map(encName => ({ encName }));
-      $('delete-message').textContent = 'Bạn có chắc chắn muốn xóa?';
-      $("delete-filename").textContent = `${currentFilesToDelete.length} tệp tin đã chọn`;
-      const modal = $("delete-modal");
-      modal.classList.remove("hidden");
-      setTimeout(() => { modal.classList.remove("opacity-0"); }, 10);
-    }
+    function openDeleteModal(encName, fileName) { _showDeleteModal([{ encName, name: fileName }], fileName); }
+    function openDeleteSelectedModal() { const f = Array.from(selectedFiles).map(e => ({ encName: e })); _showDeleteModal(f, `${f.length} tệp tin đã chọn`); }
 
     function closeDeleteModal() {
       const modal = $("delete-modal");
@@ -1761,6 +2351,68 @@
       }
       showStatus(`Hoàn tất yêu cầu tải`, "success");
     }
+
+    // ─── GLOBAL DRAG-DROP (upload to current directory) ─────────────────────
+    (function setupGlobalDragDrop() {
+      let dragCounter = 0;
+
+      // Create overlay element
+      const overlay = document.createElement('div');
+      overlay.id = 'global-drop-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(99,102,241,0.08);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;pointer-events:none;transition:opacity 0.2s';
+      overlay.innerHTML = '<div style="background:rgba(255,255,255,0.95);border:2px dashed #818cf8;border-radius:24px;padding:40px 60px;text-align:center;box-shadow:0 20px 60px rgba(99,102,241,0.15)">' +
+        '<div style="width:64px;height:64px;background:linear-gradient(135deg,#eef2ff,#ede9fe);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' +
+        '<i class="ph ph-cloud-arrow-up" style="font-size:32px;color:#6366f1"></i></div>' +
+        '<p id="drop-overlay-text" style="font-size:16px;font-weight:700;color:#4338ca;margin-bottom:4px"></p>' +
+        '<p style="font-size:13px;color:#94a3b8">Thả file để tải lên</p></div>';
+      document.body.appendChild(overlay);
+
+      function updateOverlayText() {
+        const el = document.getElementById('drop-overlay-text');
+        if (el) el.textContent = currentDir ? 'Tải vào: ' + currentDir : 'Tải vào thư mục gốc';
+      }
+
+      document.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        // Ignore if dragging from folder rows (they handle their own)
+        if (e.target.closest && e.target.closest('.folder-row')) return;
+        dragCounter++;
+        if (dragCounter === 1) {
+          updateOverlayText();
+          overlay.style.display = 'flex';
+          overlay.style.opacity = '1';
+          overlay.style.pointerEvents = 'auto';
+        }
+      });
+
+      document.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      });
+
+      document.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          overlay.style.opacity = '0';
+          setTimeout(() => { overlay.style.display = 'none'; overlay.style.pointerEvents = 'none'; }, 200);
+        }
+      });
+
+      document.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        overlay.style.opacity = '0';
+        setTimeout(() => { overlay.style.display = 'none'; overlay.style.pointerEvents = 'none'; }, 200);
+
+        // If dropped on a folder row, that handler takes care of it
+        if (e.target.closest && e.target.closest('.folder-row')) return;
+
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) doUpload(files, currentDir);
+      });
+    })();
 
     // ─── INIT ─────────────────────────────────────────────────────────────────
     refresh();
