@@ -1,521 +1,3 @@
-<!doctype html>
-<html lang="vi">
-
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#f0f4ff" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Tệp - File</title>
-
-
-  <!-- Favicon -->
-  <link rel="apple-touch-icon" sizes="60x60" href="/favicon/apple-icon-60x60.png">
-  <link rel="apple-touch-icon" sizes="72x72" href="/favicon/apple-icon-72x72.png">
-  <link rel="apple-touch-icon" sizes="76x76" href="/favicon/apple-icon-76x76.png">
-  <link rel="apple-touch-icon" sizes="114x114" href="/favicon/apple-icon-114x114.png">
-  <link rel="apple-touch-icon" sizes="120x120" href="/favicon/apple-icon-120x120.png">
-  <link rel="apple-touch-icon" sizes="144x144" href="/favicon/apple-icon-144x144.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="/favicon/apple-icon-152x152.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-icon-180x180.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="/favicon/android-icon-192x192.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="96x96" href="/favicon/favicon-96x96.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
-  <link rel="manifest" href="/favicon/manifest.json">
-  <meta name="msapplication-TileColor" content="#ffffff">
-  <meta name="msapplication-TileImage" content="/favicon/ms-icon-144x144.png">
-  <meta name="theme-color" content="#ffffff">
-
-  <!-- Preconnect & Fonts -->
-  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-    rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
-  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/fill/style.css">
-  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/bold/style.css">
-
-  <!-- Office Preview Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-
-  <style>
-    :root {
-      --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-area-top: env(safe-area-inset-top, 0px);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-      overscroll-behavior-y: none;
-      min-height: 100dvh;
-      color: #334155;
-      background: transparent;
-    }
-
-    /* ─── HIDE SCROLLBAR ─── */
-    .hide-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-
-    .hide-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-
-    @media (min-width: 768px) {
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-      }
-
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-    }
-
-    @keyframes slideUp {
-      from {
-        transform: translateY(100%);
-        opacity: 0;
-      }
-
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes slideDownToast {
-      from {
-        transform: translate(-50%, -100%);
-        opacity: 0;
-      }
-
-      to {
-        transform: translate(-50%, 0);
-        opacity: 1;
-      }
-    }
-
-    .modal-slide-up {
-      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .modal-fade-in {
-      animation: fadeIn 0.2s ease-out forwards;
-    }
-
-    .toast-enter {
-      animation: slideDownToast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .section-anim {
-      animation: fadeIn 0.4s ease-out forwards;
-      animation-delay: calc(var(--d, 1) * 100ms);
-      opacity: 0;
-    }
-  </style>
-
-</head>
-
-<body class="text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900 overflow-hidden">
-  <!-- TOAST NOTIFICATION -->
-  <div id="toast-container"
-    class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] hidden flex-col items-center gap-2 w-full max-w-[90%] md:max-w-sm pt-[var(--safe-area-top)]">
-    <div id="toast"
-      class="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl font-medium text-sm w-full bg-white/90 backdrop-blur-xl border border-white/50 transition-all">
-      <i id="toast-icon" class="ph ph-spinner animate-spin text-xl text-blue-500"></i>
-      <span id="toast-msg" class="flex-1 truncate text-slate-700 font-semibold">Đang xử lý...</span>
-    </div>
-  </div>
-
-  <div class="app-wrapper flex w-full h-[100dvh]">
-    <!-- ROOT BACKGROUND -->
-    <div class="fixed inset-0 z-[-1] overflow-hidden bg-gradient-to-br from-[#e0f7fa] via-[#e8eaf6] to-[#fce4ec]"></div>
-
-    <!-- LEFT SIDEBAR (Mô phỏng Navigation) -->
-    <aside class="hidden md:flex w-[260px] flex-col pt-8 pb-6 px-4 h-full shrink-0 z-10">
-      <div class="flex items-center gap-3 px-4 mb-10">
-        <img src="/images/cloud-storage.png" class="w-12 h-12 object-contain drop-shadow-md" alt="LAN Share" />
-        <h1 class="text-[19px] font-extrabold text-slate-800 tracking-tight">File Upload</h1>
-      </div>
-
-      <nav class="flex-1 flex flex-col gap-2">
-        <button onclick="switchTab('files')" id="nav-files-desktop"
-          class="sidebar-btn active flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all">
-          <i class="ph-fill ph-files text-xl icon"></i> Tệp tin
-        </button>
-        <button onclick="switchTab('clipboard')" id="nav-clipboard-desktop"
-          class="sidebar-btn flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all text-slate-600 hover:bg-white/40">
-          <i class="ph ph-clipboard-text text-xl icon"></i> Bảng tạm
-        </button>
-      </nav>
-
-      <!-- Auth Zone -->
-      <div class="mt-auto pt-6 border-t border-white/40">
-        <div class="relative w-full transition-all" id="pin-container">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <i class="ph ph-lock-key text-slate-500"></i>
-          </div>
-          <input id="pin" type="password" placeholder="Mã PIN truy cập" inputmode="numeric"
-            class="w-full pl-9 pr-3 py-2.5 bg-white/50 border border-white/60 rounded-xl focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all text-sm font-semibold text-slate-700 placeholder:text-slate-500 outline-none shadow-sm"
-            onkeyup="if(event.key==='Enter') { lastEtag=null; refresh(true); }"
-            oninput="clearTimeout(_pinTimer); _pinTimer=setTimeout(()=>{ lastEtag=null; refresh(true); }, 500)" />
-        </div>
-        <button id="btn-logout-pin" onclick="logoutPin()"
-          class="hidden w-full items-center justify-center gap-2 px-4 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-bold active:scale-95 transition-transform status-badge shadow-sm border border-emerald-200/50"
-          title="Đổi mã PIN">
-          <i class="ph-fill ph-shield-check text-lg"></i> Đã bảo mật
-        </button>
-
-        <label id="upload-btn" for="picker-desktop"
-          class="mt-4 flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200/60 rounded-2xl text-slate-700 font-bold shadow-sm shadow-slate-200/50 hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group">
-          <i class="ph ph-plus text-lg group-hover:text-blue-500 transition-colors"></i> Tải lên tệp
-          <input id="picker-desktop" type="file" multiple class="hidden" onchange="upload(this)" />
-        </label>
-      </div>
-    </aside>
-
-    <!-- RIGHT MAIN WHITE CARD -->
-    <div
-      class="flex-1 flex flex-col h-[100dvh] md:h-[calc(100dvh-32px)] md:my-4 md:mr-4 bg-white/90 backdrop-blur-2xl md:rounded-[32px] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.06)] border border-white/60 shrink-0 min-w-0 transition-all">
-
-      <!-- TOP SEARCH BAR & ACTIONS -->
-      <header
-        class="flex flex-col md:flex-row items-center justify-center p-4 md:px-8 md:py-5 border-b border-slate-100/50 shrink-0 gap-4 relative">
-        <!-- Mobile menu toggle/logo -->
-        <div class="md:hidden flex items-center justify-between gap-2 w-full">
-          <div class="flex items-center gap-2">
-            <img src="/images/cloud-storage.png" class="w-9 h-9 object-contain drop-shadow-sm" alt="LAN Share" />
-            <h1 class="text-lg font-extrabold text-slate-800">LAN Share</h1>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="refresh(true)"
-              class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all text-lg"><i
-                class="ph ph-arrows-clockwise"></i></button>
-          </div>
-        </div>
-
-        <div class="hidden md:flex flex-1 w-full max-w-3xl items-center justify-center gap-4 mx-auto">
-          <!-- Centered Search -->
-          <div class="flex-1 relative group">
-            <i
-              class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-blue-500 transition-colors"></i>
-            <input id="search-input" type="text" placeholder="Tìm kiếm tệp, thư mục..."
-              class="w-full pl-11 pr-10 py-2.5 bg-slate-50 border-none rounded-2xl text-sm font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-100 focus:bg-blue-50/30 transition-all shadow-sm"
-              oninput="handleSearchInput()" />
-            <button id="search-clear" onclick="clearSearch()"
-              class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-200 text-slate-600 hidden items-center justify-center text-xs hover:bg-slate-300">
-              <i class="ph-bold ph-x"></i>
-            </button>
-          </div>
-
-          <!-- Centered Actions -->
-          <div class="flex items-center gap-2 shrink-0">
-            <button onclick="refresh(true)"
-              class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all text-lg shadow-sm"><i
-                class="ph ph-arrows-clockwise"></i></button>
-          </div>
-        </div>
-      </header>
-
-      <!-- TWO PANEL LAYOUT: MAIN & RIGHT SIDEBAR -->
-      <div class="flex flex-1 min-h-0 overflow-hidden relative">
-
-        <!-- MAIN EXPLORER -->
-        <div id="tab-files"
-          class="flex-1 flex flex-col min-h-0 overflow-hidden transition-all bg-white relative pb-20 md:pb-0">
-
-          <!-- Mobile Search (if hidden on top) -->
-          <div class="sm:hidden px-4 pt-4 pb-2 shrink-0">
-            <div class="relative group">
-              <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-              <input id="search-input-mobile" type="text" placeholder="Tìm kiếm tệp..."
-                class="w-full pl-10 pr-9 py-2.5 bg-slate-50 rounded-xl text-sm font-medium outline-none border focus:border-blue-300"
-                oninput="$('search-input').value=this.value; handleSearchInput()" />
-            </div>
-          </div>
-
-          <!-- Breadcrumb -->
-          <div id="breadcrumb-bar"
-            class="px-6 py-3 flex items-center gap-1.5 text-sm overflow-x-auto hide-scrollbar shrink-0 mt-2">
-          </div>
-
-          <!-- List / Grid content -->
-          <div id="list-scroll-view" class="flex-1 overflow-y-auto px-6 pb-12">
-            <!-- Global Drag Overlay is handled in JS -->
-
-            <!-- Folders Section -->
-            <div id="folders-section" class="mb-8 hidden section-anim">
-              <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between group cursor-default">
-                <div class="flex items-center gap-3">
-                  <div class="flex items-center gap-2"><i class="ph-fill ph-folders text-blue-500"></i> Thư mục</div>
-                  <button onclick="promptCreateFolder()"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 active:scale-95 transition-all shadow-sm outline-none"
-                    title="Tạo thư mục mới"><i class="ph ph-folder-plus text-base"></i></button>
-                </div>
-                <span class="text-xs font-semibold text-slate-400" id="folders-size">0 KB</span>
-              </h3>
-              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4"
-                id="folders-grid"></div>
-            </div>
-
-            <!-- Files Section -->
-            <div id="files-section" class="mb-4 hidden section-anim" style="--d: 2">
-              <h3
-                class="text-lg font-bold text-slate-800 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div class="flex items-center gap-4 flex-wrap">
-                  <div class="flex items-center gap-2 shrink-0"><i class="ph-fill ph-file-text text-purple-500"></i> Tệp
-                    tin của tôi</div>
-                  <!-- Bulk actions moved here -->
-                  <div id="table-actions"
-                    class="hidden items-center gap-1.5 bg-blue-50/50 px-2.5 py-1.5 rounded-xl border border-blue-100/50">
-                    <span class="text-xs font-bold text-blue-700 mr-2"><span id="selected-count">0</span> chọn</span>
-                    <button onclick="downloadSelected()"
-                      class="w-7 h-7 flex items-center justify-center bg-white text-blue-600 rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-transform"><i
-                        class="ph-bold ph-download-simple text-sm"></i></button>
-                    <button onclick="openDeleteSelectedModal()"
-                      class="w-7 h-7 flex items-center justify-center bg-white text-red-500 rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-transform"><i
-                        class="ph-bold ph-trash text-sm"></i></button>
-                    <div class="w-px h-5 bg-blue-200/50 mx-1"></div>
-                    <button onclick="selectedFiles.clear(); updateSelectionUI();"
-                      class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-lg border border-slate-200 hover:text-slate-600 shadow-sm transition-colors"><i
-                        class="ph-bold ph-x text-sm"></i></button>
-                  </div>
-                </div>
-                <div class="flex items-center gap-3 shrink-0">
-                  <span class="text-xs font-semibold text-slate-400" id="files-size">0 KB</span>
-                  <button
-                    class="text-blue-500 font-bold text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors"
-                    onclick="toggleSelectAll()">Chọn tất cả</button>
-                </div>
-              </h3>
-              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4"
-                id="files-grid"></div>
-            </div>
-
-            <!-- Empty States -->
-            <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 opacity-60">
-              <img src="https://cdni.iconscout.com/illustration/premium/thumb/folder-is-empty-4064360-3363921.png"
-                class="w-48 opacity-80" alt="Empty" onerror="this.style.display='none'">
-              <i class="ph-fill ph-folder-open text-6xl text-slate-300 mb-4 drop-fallback-icon"></i>
-              <h2 class="text-xl font-bold text-slate-700">Tất cả đều trống</h2>
-              <p class="text-slate-500 text-sm mt-1">Ko tìm thấy tệp hoặc thư mục nào ở đây</p>
-            </div>
-            <div id="no-search-results" class="hidden flex flex-col items-center justify-center py-20 opacity-60">
-              <i class="ph-fill ph-magnifying-glass text-5xl text-slate-300 mb-4"></i>
-              <h2 class="text-xl font-bold text-slate-700">Không tìm thấy</h2>
-              <p class="text-slate-500 text-sm mt-1">Hãy thử với một từ khóa khác</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- RIGHT ACTIVITIES / CLIPBOARD SIDEBAR -->
-        <!-- On Mobile, it's absolute positioned covering main. On desktop it's a fixed column -->
-        <aside id="tab-clipboard"
-          class="hidden md:flex w-full md:w-80 lg:w-[340px] flex-col border-l border-slate-100 bg-slate-50/30 overflow-hidden shrink-0 absolute md:static inset-0 z-30 transition-transform">
-
-          <!-- Mobile back button to close tab -->
-          <div class="md:hidden flex items-center gap-3 px-4 py-4 border-b border-slate-100 bg-white shrink-0">
-            <button onclick="switchTab('files')"
-              class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-700 active:scale-90"><i
-                class="ph-bold ph-caret-left"></i></button>
-            <h2 class="font-bold text-slate-800 text-lg">Bảng tạm (Clipboard)</h2>
-          </div>
-
-          <div class="p-6 pb-2 shrink-0 hidden md:block">
-            <h2 class="text-lg font-bold text-slate-800 flex items-center justify-between">Bảng tạm <i
-                class="ph-fill ph-chat-circle-dots text-slate-300 text-2xl"></i></h2>
-            <!-- <p class="text-xs font-medium text-slate-500 mt-1">Dán văn bản dùng chung trong mạng LAN</p> -->
-          </div>
-
-          <div id="clipboard-list" class="flex-1 overflow-y-auto px-4 md:px-6 flex flex-col gap-4 py-4 hide-scrollbar">
-            <div class="text-center py-10 opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></div>
-          </div>
-
-          <!-- Clipboard input box -->
-          <div
-            class="p-4 md:p-6 bg-white md:bg-transparent border-t border-slate-100 shrink-0 pb-[calc(80px+1rem)] md:pb-6 relative z-10">
-            <div
-              class="bg-white rounded-2xl border border-slate-200 p-1.5 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm flex items-end">
-              <textarea id="shared-clipboard" rows="1"
-                class="flex-1 max-h-[120px] bg-transparent border-none focus:ring-0 text-sm py-2 px-2.5 resize-none hide-scrollbar placeholder:text-slate-400 font-medium"
-                placeholder="Nhập để dán (Ctrl+V)..." onkeydown="handleClipboardKeydown(event)"
-                oninput="handleClipboardInput()"></textarea>
-              <button id="btn-save-clipboard" onclick="saveClipboard()"
-                class="w-10 h-10 shrink-0 bg-blue-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all mb-[1px] mr-[1px]">
-                <i class="ph-fill ph-paper-plane-tilt text-lg"></i>
-              </button>
-            </div>
-
-
-          </div>
-
-        </aside>
-      </div>
-    </div>
-  </div>
-
-  <!-- BOTTOM NAVIGATION (Mobile Only) -->
-  <nav
-    class="md:hidden fixed z-[90] bottom-4 left-4 right-4 bg-slate-900 border border-slate-800 rounded-full shadow-2xl overflow-hidden pb-[var(--safe-area-bottom)]">
-    <div class="flex p-1.5 gap-1 relative">
-      <!-- Active pill -->
-      <div id="nav-active-pill"
-        class="absolute w-[calc(50%-6px)] h-[calc(100%-12px)] top-[6px] bottom-[6px] left-[6px] bg-slate-800 rounded-full transition-all duration-300 ease-spring pointer-events-none">
-      </div>
-
-      <button onclick="switchTab('files')"
-        class="flex-1 flex flex-col items-center justify-center py-2.5 text-white transition-colors relative z-10 active:scale-95 duration-200">
-        <i class="ph-fill ph-files text-[22px] mb-0.5"></i>
-        <span class="text-[10px] font-bold">Tệp</span>
-      </button>
-      <button onclick="switchTab('clipboard')"
-        class="flex-1 flex flex-col items-center justify-center py-2.5 text-slate-400 transition-colors relative z-10 active:scale-95 duration-200">
-        <i class="ph-fill ph-chat-circle-dots text-[22px] mb-0.5"></i>
-        <span class="text-[10px] font-bold">Lịch sử</span>
-      </button>
-
-      <!-- FAB inside Nav -->
-      <label for="picker-mobile"
-        class="w-14 h-14 bg-gradient-to-tr from-blue-500 to-cyan-400 text-white rounded-full flex items-center justify-center shrink-0 -mt-6 shadow-xl shadow-cyan-500/30 border-4 border-slate-900 z-20 cursor-pointer active:scale-90 transition-transform">
-        <i class="ph-bold ph-plus text-2xl"></i>
-        <input id="picker-mobile" type="file" multiple class="hidden" onchange="upload(this)" />
-      </label>
-    </div>
-  </nav>
-
-  <!-- MODALS: PREVIEW, DELETE, FOLDER CREATE -->
-  <!-- ... The modal HTML codes can be appended easily below. It's essentially the same logic. ... -->
-  <!-- MODAL XEM TRƯỚC (Preview) -->
-  <div id="preview-modal"
-    class="fixed inset-0 z-[100] hidden flex-col bg-slate-900/70 backdrop-blur-md transition-opacity opacity-0"
-    onclick="if(event.target===this)closePreviewModal()">
-    <div
-      class="bg-white md:rounded-[32px] shadow-2xl w-full h-full md:h-[90vh] md:max-w-5xl md:m-auto flex flex-col overflow-hidden modal-slide-up border border-slate-200">
-      <!-- Header Preview -->
-      <div
-        class="flex items-center justify-between p-3 md:p-4 border-b border-slate-100 bg-white shrink-0 pt-[var(--safe-area-top)] md:pt-4">
-        <div class="flex items-center gap-3 overflow-hidden flex-1">
-          <button onclick="closePreviewModal()"
-            class="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full active:scale-90 transition-transform md:hidden">
-            <i class="ph ph-caret-left text-xl"></i>
-          </button>
-          <h3 id="preview-title" class="text-base font-bold text-slate-800 truncate"></h3>
-        </div>
-        <div class="flex items-center gap-2 pl-2">
-          <a id="preview-download-btn" href="#"
-            class="h-10 px-6 bg-blue-500 text-white font-bold text-sm rounded-full flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all hover:bg-blue-600">
-            <i class="ph ph-download-simple text-lg"></i> <span class="hidden sm:inline">Tải về</span>
-          </a>
-          <button onclick="closePreviewModal()"
-            class="hidden md:flex w-10 h-10 items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors">
-            <i class="ph-bold ph-x text-lg"></i>
-          </button>
-        </div>
-      </div>
-      <!-- Content Preview -->
-      <div id="preview-body"
-        class="flex-1 bg-slate-50/50 overflow-auto flex items-center justify-center p-0 md:p-6 relative pb-[var(--safe-area-bottom)] md:pb-6">
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL XÓA (Delete) -->
-  <div id="delete-modal"
-    class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
-    onclick="if(event.target===this)closeDeleteModal()">
-    <div
-      class="bg-white w-full md:w-[400px] md:rounded-3xl rounded-t-3xl pt-6 pb-8 px-6 md:p-8 flex flex-col items-center modal-slide-up shadow-2xl relative border border-slate-100">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mb-6 md:hidden"></div>
-      <div
-        class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-5 animate-pulse shadow-sm border border-red-100">
-        <i class="ph-fill ph-warning-circle text-4xl"></i>
-      </div>
-      <h3 class="text-xl font-bold text-slate-800 mb-2 text-center" id="delete-message">Bạn có chắc chắn muốn xóa?
-      </h3>
-      <p class="text-slate-500 text-center mb-8 font-medium line-clamp-2" id="delete-filename">Tệp tin</p>
-
-      <div class="flex w-full gap-3">
-        <button onclick="closeDeleteModal()"
-          class="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 active:scale-95 transition-all outline-none">Hủy
-          bỏ</button>
-        <button onclick="executeDelete()"
-          class="flex-1 py-3.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 active:scale-95 transition-all shadow-lg shadow-red-500/20 outline-none">Xóa
-          ngay</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL TẠO THƯ MỤC -->
-  <div id="create-folder-modal"
-    class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
-    onclick="if(event.target===this)closeCreateFolderModal()">
-    <div
-      class="bg-white w-full md:w-[400px] md:rounded-3xl rounded-t-3xl pt-6 pb-12 px-6 md:p-8 md:pb-8 flex flex-col modal-slide-up shadow-2xl relative border border-slate-100">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mb-6 md:hidden mx-auto"></div>
-
-      <div class="flex items-center gap-4 mb-6">
-        <div
-          class="w-12 h-12 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0 shadow-sm border border-amber-100">
-          <i class="ph-fill ph-folder-plus text-2xl"></i>
-        </div>
-        <div>
-          <h3 class="text-lg font-bold text-slate-800">Thư mục mới</h3>
-          <p class="text-sm text-slate-500 mt-0.5" id="create-folder-desc">Trong thư mục gốc</p>
-        </div>
-      </div>
-
-      <div class="relative group">
-        <i
-          class="ph-fill ph-folder absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors"></i>
-        <input type="text" id="new-folder-name" placeholder="Tên thư mục mới..."
-          class="w-full bg-slate-50 border border-slate-200 text-slate-800 pl-11 py-3.5 pr-4 rounded-2xl outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-400 font-medium transition-all"
-          onkeyup="if(event.key==='Enter') executeCreateFolder()" />
-      </div>
-
-      <div class="flex w-full gap-3 mt-8">
-        <button onclick="closeCreateFolderModal()"
-          class="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 active:scale-95 transition-all outline-none">Hủy</button>
-        <button onclick="executeCreateFolder()"
-          class="flex-1 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 active:scale-95 transition-all shadow-lg shadow-amber-500/20 outline-none">Tạo
-          thư mục</button>
-      </div>
-    </div>
-  </div>
-  <script>
 
     // ─── UTILS ────────────────────────────────────────────────────────────────
     const $ = (id) => document.getElementById(id) || document.createElement("div");
@@ -1833,117 +1315,78 @@
         doUpload(files, currentDir);
       }
     });
-    // ─── REALTIME SSE ─────────────────────────────────────────────────────────
-    let sseSource = null;
-    let sseRetryCount = 0;
-
-    function initSSE() {
-      if (isLocalPreview) return;
-      if (sseSource) sseSource.close();
-      const pinVal = headers()["X-PIN"] || "";
-      const qs = pinVal ? `?pin=${pinVal}` : "";
-      sseSource = new EventSource(`/events${qs}`);
-
-      sseSource.addEventListener("clipboard", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          if (Array.isArray(data.history)) {
-            clipboardHistory = data.history;
-            renderClipboardList();
-          }
-        } catch { }
-      });
-
-      sseSource.addEventListener("changed", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          if (data.dir === currentDir || (!data.dir && !currentDir)) {
-            refresh(true);
-          }
-        } catch { }
-      });
-
-      sseSource.onerror = () => {
-        sseSource.close();
-        sseRetryCount++;
-        const delay = Math.min(sseRetryCount * 2000, 30000); // Tăng dần từ 2s -> max 30s
-        setTimeout(initSSE, delay);
-      };
-
-      sseSource.onopen = () => { sseRetryCount = 0; };
-    }
 
     // ─── INIT ─────────────────────────────────────────────────────────────────
     refresh();
-    initSSE();
-    setInterval(() => debouncedRefresh(), 60000); // Polling dự phòng 60s
+    setInterval(() => debouncedRefresh(), 5000); // Fallback polling since SSE code was simplified for demo
+
 
     // This script contains the new DOM build functions that will replace old ones via script. 
     // It needs to be injected into the existing  block.
 
     // ─── OVERRIDE DOM BUILDERS FOR BENTO GRID ───
     window.buildFolderRow = function buildFolderRow(folder) {
-      const encName = encodeURIComponent(folder.name);
-      const isChecked = selectedFiles.has(encName);
+    const encName = encodeURIComponent(folder.name);
+    const isChecked = selectedFiles.has(encName);
 
-      const colors = [
+    const colors = [
         'from-blue-100 to-blue-50 text-blue-600 shadow-blue-500/10',
         'from-teal-100 to-teal-50 text-teal-600 shadow-teal-500/10',
         'from-purple-100 to-purple-50 text-purple-600 shadow-purple-500/10',
         'from-orange-100 to-orange-50 text-orange-600 shadow-orange-500/10',
         'from-pink-100 to-pink-50 text-pink-600 shadow-pink-500/10'
-      ];
-      const colorClass = colors[folder.name.length % colors.length];
+    ];
+    const colorClass = colors[folder.name.length % colors.length];
 
-      const div = document.createElement("div");
-      div.dataset.enc = encName;
-      div.className = `folder-row group relative p-4 rounded-3xl bg-gradient-to-br ${colorClass} shadow-sm border border-white/50 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-32 aspect-[4/3] sm:aspect-auto`;
-
-      div.ondragover = (e) => { e.preventDefault(); div.classList.add('ring-4', 'ring-blue-400/50', 'ring-offset-2'); };
-      div.ondragleave = () => { div.classList.remove('ring-4', 'ring-blue-400/50', 'ring-offset-2'); };
-      div.ondrop = (e) => {
+    const div = document.createElement("div");
+    div.dataset.enc = encName;
+    div.className = `folder-row group relative p-4 rounded-3xl bg-gradient-to-br ${colorClass} shadow-sm border border-white/50 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-32 aspect-[4/3] sm:aspect-auto`;
+  
+    div.ondragover = (e) => { e.preventDefault(); div.classList.add('ring-4', 'ring-blue-400/50', 'ring-offset-2'); };
+    div.ondragleave = () => { div.classList.remove('ring-4', 'ring-blue-400/50', 'ring-offset-2'); };
+    div.ondrop = (e) => {
         e.preventDefault(); div.classList.remove('ring-4', 'ring-blue-400/50', 'ring-offset-2');
         const files = e.dataTransfer.files;
         if (files.length > 0) uploadToFolder(files, currentDir ? currentDir + '/' + folder.name : folder.name);
-      };
-
-      div.onclick = (e) => {
+    };
+  
+    div.onclick = (e) => {
         if (e.target.closest('.action-btn')) return;
         navigateToDir(currentDir ? currentDir + '/' + folder.name : folder.name);
-      };
+    };
 
-      div.innerHTML = `
+    div.innerHTML = `
         <div class="flex items-start justify-between">
            <div class="w-10 h-10 rounded-2xl bg-white/70 flex items-center justify-center shadow-sm">
               <i class="ph-fill ph-folder text-xl"></i>
            </div>
-           <button class="action-btn w-8 h-8 rounded-full bg-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white" onclick="event.stopPropagation(); openDeleteFolderModal('${encName}', '${folder.name.replace(/'/g, "\\'")}')"><i class="ph-bold ph-trash text-red-500"></i></button>
+           <button class="action-btn w-8 h-8 rounded-full bg-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white" onclick="event.stopPropagation(); openDeleteModal('${encName}', '${folder.name.replace(/'/g, "\\'")}')"><i class="ph-bold ph-trash text-red-500"></i></button>
         </div>
         <div class="mt-auto">
            <h3 class="font-bold text-sm truncate pr-2 text-slate-800 leading-tight">${folder.name}</h3>
-           <span class="text-[10px] font-semibold opacity-70">${folder.itemCount || 0} mục &bull; ${fmt(folder.totalSize)}</span>
+           <span class="text-[10px] font-semibold opacity-70">${folder.count || 0} mục &bull; ${fmt(folder.totalSize)}</span>
         </div>
     `;
-      return div;
-    };
+    return div;
+};
 
-    window.buildRow = function buildRow(f) {
-      const fileName = f.name.normalize("NFC");
-      const props = fileProps(fileName); // existing function returns config {bg, icon, color}
-      const encName = encodeURIComponent(fileName);
-      const isChecked = selectedFiles.has(encName);
-      const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
+window.buildRow = function buildRow(f) {
+  const fileName = f.name.normalize("NFC");
+  const props = fileProps(fileName); // existing function returns config {bg, icon, color}
+  const encName = encodeURIComponent(fileName);
+  const isChecked = selectedFiles.has(encName);
+  const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
 
-      const div = document.createElement("div");
-      div.dataset.enc = encName;
-      div.className = `file-row relative flex flex-col p-4 rounded-[24px] bg-white border ${isChecked ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-100'} shadow-[0_4px_20px_rgba(0,0,0,0.03)] cursor-pointer hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 group`;
+  const div = document.createElement("div");
+  div.dataset.enc = encName;
+  div.className = `file-row relative flex flex-col p-4 rounded-[24px] bg-white border ${isChecked ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-100'} shadow-[0_4px_20px_rgba(0,0,0,0.03)] cursor-pointer hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 group`;
+  
+  div.onclick = (e) => {
+    if (e.target.closest('button') || e.target.closest('a')) return;
+    openPreviewModal(encName, fileName);
+  };
 
-      div.onclick = (e) => {
-        if (e.target.closest('button') || e.target.closest('a')) return;
-        openPreviewModal(encName, fileName);
-      };
-
-      div.innerHTML = `
+  div.innerHTML = `
     <div class="flex items-start justify-between absolute top-3 right-3 z-10 w-full px-6 flex-row-reverse">
        
        <button onclick="event.stopPropagation(); toggleSelect('${encName}')" class="action-btn w-6 h-6 rounded-full ${isChecked ? 'bg-blue-500 border-none' : 'bg-transparent border-2 border-slate-200'} flex items-center justify-center transition-colors">
@@ -1970,354 +1413,88 @@
        </div>
     </div>
   `;
-      return div;
-    };
+  return div;
+};
 
-    // Override renderFiles because the layout structure completely changed (Removed groups)
-    window.renderFiles = function renderFiles(files, folders) {
-      let filteredFiles = currentSearchTerm ? files.filter(f => f.name.toLowerCase().includes(currentSearchTerm)) : files;
-      let filteredFolders = currentSearchTerm ? folders.filter(f => f.name.toLowerCase().includes(currentSearchTerm)) : folders;
-      currentFiles = filteredFiles;
+// Override renderFiles because the layout structure completely changed (Removed groups)
+window.renderFiles = function renderFiles(files, folders) {
+  let filteredFiles = currentSearchTerm ? files.filter(f => f.name.toLowerCase().includes(currentSearchTerm)) : files;
+  let filteredFolders = currentSearchTerm ? folders.filter(f => f.name.toLowerCase().includes(currentSearchTerm)) : folders;
+  currentFiles = filteredFiles;
 
-      const fSection = document.getElementById('folders-section');
-      const dSection = document.getElementById('files-section');
-      const emptyState = document.getElementById('empty-state');
-      const noSearch = document.getElementById('no-search-results');
-      const fGrid = document.getElementById('folders-grid');
-      const dGrid = document.getElementById('files-grid');
+  const fSection = document.getElementById('folders-section');
+  const dSection = document.getElementById('files-section');
+  const emptyState = document.getElementById('empty-state');
+  const noSearch = document.getElementById('no-search-results');
+  const fGrid = document.getElementById('folders-grid');
+  const dGrid = document.getElementById('files-grid');
 
-      fGrid.innerHTML = ''; dGrid.innerHTML = '';
-      emptyState.classList.add('hidden'); noSearch.classList.add('hidden');
+  fGrid.innerHTML = ''; dGrid.innerHTML = '';
+  fSection.classList.add('hidden'); dSection.classList.add('hidden');
+  emptyState.classList.add('hidden'); noSearch.classList.add('hidden');
 
-      if (currentSearchTerm && filteredFiles.length === 0 && filteredFolders.length === 0) {
-        noSearch.classList.remove('hidden');
-        fSection.classList.add('hidden');
-        dSection.classList.add('hidden');
-        return;
-      }
+  if (files.length === 0 && folders.length === 0) {
+    emptyState.classList.remove('hidden'); return;
+  }
+  if (currentSearchTerm && filteredFiles.length === 0 && filteredFolders.length === 0) {
+    noSearch.classList.remove('hidden'); return;
+  }
 
-      // Luôn hiện tiêu đề section kể cả trống để người dùng dùng nút thao tác (Tạo folder, v.v)
-      fSection.classList.remove('hidden');
-      dSection.classList.remove('hidden');
+  // Sort logic applies normally
+  filteredFiles = sortFiles(filteredFiles);
+  if (currentSortMode === 'size-desc') filteredFolders = [...filteredFolders].sort((a, b) => (b.totalSize || 0) - (a.totalSize || 0));
+  else if (currentSortMode === 'size-asc') filteredFolders = [...filteredFolders].sort((a, b) => (a.totalSize || 0) - (b.totalSize || 0));
+  else if (currentSortMode === 'name-desc') filteredFolders = [...filteredFolders].sort((a, b) => b.name.localeCompare(a.name));
 
-      if (files.length === 0 && folders.length === 0) {
-        emptyState.classList.remove('hidden');
-      }
+  let totalDSize = 0;
+  if (filteredFolders.length > 0) {
+    fSection.classList.remove('hidden');
+    let fSize = 0;
+    for (const folder of filteredFolders) {
+        fGrid.appendChild(buildFolderRow(folder));
+        fSize += (folder.totalSize || 0);
+    }
+    document.getElementById('folders-size').innerText = fmt(fSize);
+  }
 
-      // Sort logic applies normally
-      filteredFiles = sortFiles(filteredFiles);
-      if (currentSortMode === 'size-desc') filteredFolders = [...filteredFolders].sort((a, b) => (b.totalSize || 0) - (a.totalSize || 0));
-      else if (currentSortMode === 'size-asc') filteredFolders = [...filteredFolders].sort((a, b) => (a.totalSize || 0) - (b.totalSize || 0));
-      else if (currentSortMode === 'name-desc') filteredFolders = [...filteredFolders].sort((a, b) => b.name.localeCompare(a.name));
+  if (filteredFiles.length > 0) {
+    dSection.classList.remove('hidden');
+    for (const file of filteredFiles) {
+        dGrid.appendChild(buildRow(file));
+        totalDSize += (file.size || 0);
+    }
+    document.getElementById('files-size').innerText = fmt(totalDSize);
+  }
+  
+  // Storage usage tracking
+  document.getElementById('storage-used').innerText = "Vài GB"; // Mock since server.js doesn't sum entire drive
+};
 
-      let totalDSize = 0;
-      let fSize = 0;
-
-      if (filteredFolders.length > 0) {
-        for (const folder of filteredFolders) {
-          fGrid.appendChild(buildFolderRow(folder));
-          fSize += (folder.totalSize || 0);
-        }
-      }
-      document.getElementById('folders-size').innerText = fmt(fSize);
-
-      if (filteredFiles.length > 0) {
-        for (const file of filteredFiles) {
-          dGrid.appendChild(buildRow(file));
-          totalDSize += (file.size || 0);
-        }
-        document.getElementById('files-size').innerText = fmt(totalDSize);
-      }
-
-      // Storage usage tracking
-      // Mock since server.js doesn't sum entire drive
-    };
-
-    // Helper overrides
-    window.switchTab = function switchTab(tabId) {
-      const isFiles = tabId === 'files';
-      // Mobile pill animation
-      const pill = document.getElementById('nav-active-pill');
-      if (pill) pill.style.transform = isFiles ? 'translateX(0)' : 'translateX(100%)';
-
-      // Desktop active states
-      const navF = document.getElementById('nav-files-desktop');
-      const navC = document.getElementById('nav-clipboard-desktop');
-      if (navF && navC) {
-        if (isFiles) {
-          navF.className = 'sidebar-btn active flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all bg-blue-50 text-blue-600 shadow-sm';
-          navC.className = 'sidebar-btn flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all text-slate-600 hover:bg-white/40';
+// Helper overrides
+window.switchTab = function switchTab(tabId) {
+    const isFiles = tabId === 'files';
+    // Mobile pill animation
+    const pill = document.getElementById('nav-active-pill');
+    if (pill) pill.style.transform = isFiles ? 'translateX(0)' : 'translateX(100%)';
+    
+    // Desktop active states
+    const navF = document.getElementById('nav-files-desktop');
+    const navC = document.getElementById('nav-clipboard-desktop');
+    if(navF && navC) {
+        if(isFiles) {
+           navF.className = 'sidebar-btn active flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all bg-blue-50 text-blue-600 shadow-sm';
+           navC.className = 'sidebar-btn flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all text-slate-600 hover:bg-white/40';
         } else {
-          navC.className = 'sidebar-btn active flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all bg-blue-50 text-blue-600 shadow-sm';
-          navF.className = 'sidebar-btn flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all text-slate-600 hover:bg-white/40';
+           navC.className = 'sidebar-btn active flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all bg-blue-50 text-blue-600 shadow-sm';
+           navF.className = 'sidebar-btn flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all text-slate-600 hover:bg-white/40';
         }
-      }
+    }
 
-      // Toggle panels
-      if (window.innerWidth < 768) {
-        document.getElementById('tab-clipboard').classList.toggle('hidden', isFiles);
-        document.getElementById('tab-files').classList.toggle('hidden', !isFiles);
-      }
-    };
+    // Toggle panels
+    if (window.innerWidth < 768) {
+       document.getElementById('tab-clipboard').classList.toggle('hidden', isFiles);
+       document.getElementById('tab-files').classList.toggle('hidden', !isFiles);
+    }
+};
 
-    // --- BENTO GRID MODAL HANDLERS OVERRIDE ---
-    window.closePreviewModal = function () {
-      document.getElementById('preview-modal').classList.add('opacity-0');
-      setTimeout(() => {
-        document.getElementById('preview-modal').classList.add('hidden');
-        document.getElementById('preview-modal').classList.remove('flex');
-      }, 200);
-      document.getElementById('preview-body').innerHTML = '';
-    };
-
-    window.openPreviewModal = function (encName, fileName) {
-      const modal = document.getElementById('preview-modal');
-      document.getElementById('preview-title').textContent = fileName;
-      const dlBtn = document.getElementById('preview-download-btn');
-      const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
-      dlBtn.href = `/download/${encName}${dirParam}`;
-      dlBtn.download = fileName;
-
-      const ext = fileName.split('.').pop().toLowerCase();
-      const body = document.getElementById('preview-body');
-      body.innerHTML = '<div class="flex items-center justify-center h-full"><i class="ph ph-spinner animate-spin text-4xl text-blue-500"></i></div>';
-
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(() => modal.classList.remove('opacity-0'), 10);
-
-      const path = `/download/${encName}${dirParam}&preview=1`;
-      const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext);
-      const isVideo = ['mp4', 'webm'].includes(ext);
-      const isAudio = ['mp3', 'wav', 'ogg'].includes(ext);
-
-      if (isImage) {
-        body.innerHTML = `<img src="${path}" class="max-w-full max-h-full object-contain rounded-xl shadow-lg" onerror="this.onerror=null;this.src='/download/${encName}${dirParam}';this.parentElement.innerHTML='<div class=\\'text-center p-8\\'><i class=\\'ph-fill ph-image text-6xl text-slate-400 mb-4\\'></i><p class=\\'font-bold text-slate-700\\'>Lỗi khi tải ảnh</p></div>';" />`;
-      } else if (isVideo) {
-        body.innerHTML = `<video src="${path}" controls autoplay class="max-w-full max-h-full rounded-xl shadow-lg"></video>`;
-      } else if (isAudio) {
-        body.innerHTML = `<audio src="${path}" controls autoplay class="w-full max-w-md"></audio>`;
-      } else {
-        body.innerHTML = `<div class="text-center p-8"><i class="ph-fill ph-file text-6xl text-slate-400 mb-4"></i><p class="font-bold text-slate-700">Không thể xem trước tệp này</p></div>`;
-      }
-    };
-
-    window.promptCreateFolder = function () {
-      const modal = document.getElementById('create-folder-modal');
-      const input = document.getElementById('new-folder-name');
-      input.value = '';
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(() => modal.classList.remove('opacity-0'), 10);
-      setTimeout(() => input.focus(), 300);
-    };
-
-    window.closeCreateFolderModal = function () {
-      const modal = document.getElementById('create-folder-modal');
-      modal.classList.add('opacity-0');
-      setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }, 200);
-    };
-
-    window.executeCreateFolder = async function () {
-      const input = document.getElementById('new-folder-name');
-      const name = input.value.trim();
-      if (!name) { input.focus(); return; }
-
-      closeCreateFolderModal();
-      showStatus('Đang tạo thư mục...', 'loading');
-      try {
-        const res = await safeFetch('/api/folders', {
-          method: 'POST',
-          headers: { ...headers(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, dir: currentDir })
-        });
-        if (res.ok) {
-          showStatus('Đã tạo thư mục', 'success');
-          lastEtag = null;
-          refresh(true);
-        } else {
-          const data = await res.json();
-          showStatus(data.error || 'Lỗi', 'error');
-        }
-      } catch (e) {
-        showStatus('Lỗi kết nối', 'error');
-      }
-    };
-
-    let _pendingDeleteState = null;
-
-    window.openDeleteFolderModal = function (encName, folderName) {
-      _pendingDeleteState = { type: 'folder', encName, folderName };
-      document.getElementById('delete-message').textContent = 'Xóa thư mục và dữ liệu bên trong?';
-      document.getElementById('delete-filename').textContent = folderName;
-      const modal = document.getElementById('delete-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(() => modal.classList.remove('opacity-0'), 10);
-    };
-
-    window.openDeleteModal = function (encName, fileName) {
-      _pendingDeleteState = { type: 'file', encName, fileName };
-      document.getElementById('delete-message').textContent = 'Bạn có chắc chắn muốn xóa?';
-      document.getElementById('delete-filename').textContent = fileName;
-      const modal = document.getElementById('delete-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(() => modal.classList.remove('opacity-0'), 10);
-    };
-
-    window.openDeleteSelectedModal = function () {
-      if (selectedFiles.size === 0) return;
-      _pendingDeleteState = { type: 'bulk' };
-      document.getElementById('delete-message').textContent = `Xóa ${selectedFiles.size} mục đã chọn?`;
-      document.getElementById('delete-filename').textContent = 'Việc này không thể phục hồi!';
-      const modal = document.getElementById('delete-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(() => modal.classList.remove('opacity-0'), 10);
-    };
-
-    window.closeDeleteModal = function () {
-      _pendingDeleteState = null;
-      const modal = document.getElementById('delete-modal');
-      modal.classList.add('opacity-0');
-      setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }, 200);
-    };
-
-    window.executeDelete = async function () {
-      const state = _pendingDeleteState;
-      if (!state) return;
-
-      closeDeleteModal();
-
-      if (state.type === 'folder') {
-        showStatus(`Đang xóa thư mục...`, 'loading');
-        setTimeout(async () => {
-          try {
-            const folderFullDir = currentDir ? `${currentDir}/${state.folderName}` : state.folderName;
-            const res = await safeFetch(`/api/folders?dir=${encodeURIComponent(folderFullDir)}`, { method: 'DELETE', headers: headers() });
-            if (res.ok) {
-              showStatus(`Đã xóa thư mục`, 'success');
-              lastEtag = null;
-              refresh(true);
-            } else {
-              const doc = await res.json();
-              showStatus(doc.error || 'Không thể xóa', 'error');
-            }
-          } catch (e) { showStatus('Lỗi mạng', 'error'); }
-        }, 300);
-        return;
-      }
-
-      const toDelete = [];
-      if (state.type === 'bulk') {
-        for (const item of selectedFiles) toDelete.push(item);
-      } else if (state.type === 'file') {
-        toDelete.push(state.encName);
-      }
-
-      showStatus(`Đang xóa ${toDelete.length} mục...`, 'loading');
-
-      let successCount = 0;
-      for (const encName of toDelete) {
-        const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
-        try {
-          const res = await safeFetch(`/api/files/${encName}${dirParam}`, { method: 'DELETE', headers: headers() });
-          if (res.ok) successCount++;
-        } catch { }
-      }
-
-      selectedFiles.clear();
-      updateSelectionUI();
-      if (successCount > 0) {
-        showStatus(`Đã xóa ${successCount} mục`, 'success');
-      } else {
-        showStatus('Không thể xóa tệp', 'error');
-      }
-      lastEtag = null;
-      refresh(true);
-    };
-
-    // --- BULK DOWNLOAD WITH ZIP COMPRESSION ---
-    window.downloadSelected = async function () {
-      if (selectedFiles.size === 0) return;
-      const files = Array.from(selectedFiles);
-
-      if (files.length <= 2) {
-        // Tải thông thường từng file
-        for (const encName of files) {
-          const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
-          const a = document.createElement('a');
-          a.href = `/download/${encName}${dirParam}`;
-          a.download = decodeURIComponent(encName);
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          await new Promise(r => setTimeout(r, 600)); // Khoảng nghỉ tránh trình duyệt block
-        }
-        selectedFiles.clear();
-        updateSelectionUI();
-        return;
-      }
-
-      // Nén ZIP nếu tải nhiều hơn 2 tệp
-      showStatus(`Đang chuẩn bị nén ${files.length} tệp...`, 'loading');
-
-      try {
-        // Tải JSZip động qua hàm lazyLoad có sẵn
-        await lazyLoad('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
-
-        const zip = new JSZip();
-        let loadedCount = 0;
-
-        for (const encName of files) {
-          const fileName = decodeURIComponent(encName);
-          showStatus(`Đang tải dữ liệu: ${fileName} (${loadedCount + 1}/${files.length})`, 'loading');
-
-          const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
-          const res = await fetch(`/download/${encName}${dirParam}`, { headers: headers() });
-          if (!res.ok) throw new Error("Fetch failed: " + fileName);
-
-          const blob = await res.blob();
-          zip.file(fileName, blob);
-          loadedCount++;
-        }
-
-        showStatus(`Bắt đầu xử lý nén ZIP... Đừng đóng trang`, 'loading');
-
-        const content = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } }, function updateCallback(metadata) {
-          showStatus(`Tiến trình nén ZIP: ${metadata.percent.toFixed(0)}%`, 'loading');
-        });
-
-        showStatus('Hoàn tất! Hệ thống sẽ tải tệp .zip...', 'success');
-
-        const url = window.URL.createObjectURL(content);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `LAN_Share_Archive_${Date.now()}.zip`;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => window.URL.revokeObjectURL(url), 10000);
-
-      } catch (e) {
-        console.error("ZIP Error:", e);
-        showStatus('Lỗi xử lý nén hoặc tải tệp', 'error');
-      }
-
-      selectedFiles.clear();
-      updateSelectionUI();
-    };
-
-  </script>
-</body>
-
-</html>
+  

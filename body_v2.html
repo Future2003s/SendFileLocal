@@ -1,0 +1,270 @@
+<!-- TOAST NOTIFICATION -->
+<div id="toast-container"
+    class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] hidden flex-col items-center gap-2 w-full max-w-[90%] md:max-w-sm pt-[var(--safe-area-top)]">
+    <div id="toast"
+        class="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl font-medium text-sm w-full bg-white/90 backdrop-blur-xl border border-white/50 transition-all">
+        <i id="toast-icon" class="ph ph-spinner animate-spin text-xl text-blue-500"></i>
+        <span id="toast-msg" class="flex-1 truncate text-slate-700 font-semibold">Đang xử lý...</span>
+    </div>
+</div>
+
+<div class="app-wrapper flex w-full h-[100dvh]">
+    <!-- ROOT BACKGROUND -->
+    <div class="fixed inset-0 z-[-1] overflow-hidden bg-gradient-to-br from-[#e0f7fa] via-[#e8eaf6] to-[#fce4ec]"></div>
+
+    <!-- LEFT SIDEBAR (Mô phỏng Navigation) -->
+    <aside class="hidden md:flex w-[260px] flex-col pt-8 pb-6 px-4 h-full shrink-0 z-10">
+        <div class="flex items-center gap-3 px-4 mb-10">
+            <!-- <div
+                class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30">
+                <i class="ph-fill ph-cloud-check text-2xl"></i>
+            </div> -->
+            <h1 class="text-[19px] font-extrabold text-slate-800 tracking-tight">File Upload</h1>
+        </div>
+
+        <nav class="flex-1 flex flex-col gap-2">
+            <button onclick="switchTab('files')" id="nav-files-desktop"
+                class="sidebar-btn active flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all">
+                <i class="ph-fill ph-files text-xl icon"></i> Tệp tin
+            </button>
+            <button onclick="switchTab('clipboard')" id="nav-clipboard-desktop"
+                class="sidebar-btn flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all text-slate-600 hover:bg-white/40">
+                <i class="ph ph-clipboard-text text-xl icon"></i> Bảng tạm
+            </button>
+        </nav>
+
+        <!-- Auth Zone -->
+        <div class="mt-auto pt-6 border-t border-white/40">
+            <div class="relative w-full transition-all" id="pin-container">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="ph ph-lock-key text-slate-500"></i>
+                </div>
+                <input id="pin" type="password" placeholder="Mã PIN truy cập" inputmode="numeric"
+                    class="w-full pl-9 pr-3 py-2.5 bg-white/50 border border-white/60 rounded-xl focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all text-sm font-semibold text-slate-700 placeholder:text-slate-500 outline-none shadow-sm"
+                    onkeyup="if(event.key==='Enter') { lastEtag=null; refresh(true); }"
+                    oninput="clearTimeout(_pinTimer); _pinTimer=setTimeout(()=>{ lastEtag=null; refresh(true); }, 500)" />
+            </div>
+            <button id="btn-logout-pin" onclick="logoutPin()"
+                class="hidden w-full items-center justify-center gap-2 px-4 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-bold active:scale-95 transition-transform status-badge shadow-sm border border-emerald-200/50"
+                title="Đổi mã PIN">
+                <i class="ph-fill ph-shield-check text-lg"></i> Đã bảo mật
+            </button>
+
+            <label id="upload-btn" for="picker-desktop"
+                class="mt-4 flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200/60 rounded-2xl text-slate-700 font-bold shadow-sm shadow-slate-200/50 hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group">
+                <i class="ph ph-plus text-lg group-hover:text-blue-500 transition-colors"></i> Tải lên tệp
+                <input id="picker-desktop" type="file" multiple class="hidden" onchange="upload(this)" />
+            </label>
+        </div>
+    </aside>
+
+    <!-- RIGHT MAIN WHITE CARD -->
+    <div
+        class="flex-1 flex flex-col h-[100dvh] md:h-[calc(100dvh-32px)] md:my-4 md:mr-4 bg-white/90 backdrop-blur-2xl md:rounded-[32px] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.06)] border border-white/60 shrink-0 min-w-0 transition-all">
+
+        <!-- TOP SEARCH BAR -->
+        <header
+            class="flex items-center justify-between p-4 md:px-8 md:py-5 border-b border-slate-100/50 shrink-0 gap-4">
+            <!-- Mobile menu toggle/logo -->
+            <div class="md:hidden flex items-center gap-2">
+                <div
+                    class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-500 flex items-center justify-center text-white">
+                    <i class="ph-fill ph-cloud-check text-xl"></i>
+                </div>
+                <h1 class="text-lg font-extrabold text-slate-800">LAN Share</h1>
+            </div>
+
+            <div class="flex-1 max-w-2xl relative group hidden sm:block">
+                <i
+                    class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-blue-500 transition-colors"></i>
+                <input id="search-input" type="text" placeholder="Tìm kiếm tệp, thư mục..."
+                    class="w-full pl-11 pr-10 py-2.5 bg-slate-50 border-none rounded-2xl text-sm font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-100 focus:bg-blue-50/30 transition-all"
+                    oninput="handleSearchInput()" />
+                <button id="search-clear" onclick="clearSearch()"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-200 text-slate-600 hidden items-center justify-center text-xs hover:bg-slate-300">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="promptCreateFolder()"
+                    class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all text-lg"
+                    title="Thư mục mới"><i class="ph ph-folder-plus"></i></button>
+                <button onclick="refresh(true)"
+                    class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all text-lg"><i
+                        class="ph ph-arrows-clockwise"></i></button>
+                <div class="h-8 w-px bg-slate-200 mx-1 hidden md:block"></div>
+                <!-- Bulk actions -->
+                <div id="table-actions"
+                    class="hidden items-center gap-2 bg-blue-50 px-2 py-1.5 rounded-xl border border-blue-100">
+                    <span class="text-xs font-bold text-blue-700 mr-1 px-1 whitespace-nowrap"><span
+                            id="selected-count">0</span> chọn</span>
+                    <button onclick="downloadSelected()"
+                        class="w-7 h-7 flex items-center justify-center bg-white text-blue-600 rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-transform"><i
+                            class="ph-bold ph-download-simple"></i></button>
+                    <button onclick="openDeleteSelectedModal()"
+                        class="w-7 h-7 flex items-center justify-center bg-white text-red-500 rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-transform"><i
+                            class="ph-bold ph-trash"></i></button>
+                    <!-- Deselect all -->
+                    <button onclick="selectedFiles.clear(); updateSelectionUI();"
+                        class="w-7 h-7 flex items-center justify-center bg-white text-slate-500 rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-transform"><i
+                            class="ph-bold ph-x"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <!-- TWO PANEL LAYOUT: MAIN & RIGHT SIDEBAR -->
+        <div class="flex flex-1 min-h-0 overflow-hidden relative">
+
+            <!-- MAIN EXPLORER -->
+            <div id="tab-files"
+                class="flex-1 flex flex-col min-h-0 overflow-hidden transition-all bg-white relative pb-20 md:pb-0">
+
+                <!-- Mobile Search (if hidden on top) -->
+                <div class="sm:hidden px-4 pt-4 pb-2 shrink-0">
+                    <div class="relative group">
+                        <i
+                            class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                        <input id="search-input-mobile" type="text" placeholder="Tìm kiếm tệp..."
+                            class="w-full pl-10 pr-9 py-2.5 bg-slate-50 rounded-xl text-sm font-medium outline-none border focus:border-blue-300"
+                            oninput="$('search-input').value=this.value; handleSearchInput()" />
+                    </div>
+                </div>
+
+                <!-- Breadcrumb -->
+                <div id="breadcrumb-bar"
+                    class="px-6 py-3 flex items-center gap-1.5 text-sm overflow-x-auto hide-scrollbar shrink-0 mt-2">
+                </div>
+
+                <!-- List / Grid content -->
+                <div id="list-scroll-view" class="flex-1 overflow-y-auto px-6 pb-12">
+                    <!-- Global Drag Overlay is handled in JS -->
+
+                    <!-- Folders Section -->
+                    <div id="folders-section" class="mb-8 hidden section-anim">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
+                            <div class="flex items-center gap-2"><i class="ph-fill ph-folders text-blue-500"></i> Thư
+                                mục</div><span class="text-xs font-semibold text-slate-400" id="folders-size">0
+                                KB</span>
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4"
+                            id="folders-grid"></div>
+                    </div>
+
+                    <!-- Files Section -->
+                    <div id="files-section" class="mb-4 hidden section-anim" style="--d: 2">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
+                            <div class="flex items-center gap-2"><i class="ph-fill ph-file-text text-purple-500"></i>
+                                Tệp tin của tôi</div>
+                            <div class="flex items-center gap-2"><span class="text-xs font-semibold text-slate-400"
+                                    id="files-size">0 KB</span><button
+                                    class="text-blue-500 font-semibold text-sm hover:underline"
+                                    onclick="toggleSelectAll()">Chọn tất</button></div>
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4"
+                            id="files-grid"></div>
+                    </div>
+
+                    <!-- Empty States -->
+                    <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 opacity-60">
+                        <img src="https://cdni.iconscout.com/illustration/premium/thumb/folder-is-empty-4064360-3363921.png"
+                            class="w-48 opacity-80" alt="Empty" onerror="this.style.display='none'">
+                        <i class="ph-fill ph-folder-open text-6xl text-slate-300 mb-4 drop-fallback-icon"></i>
+                        <h2 class="text-xl font-bold text-slate-700">Tất cả đều trống</h2>
+                        <p class="text-slate-500 text-sm mt-1">Ko tìm thấy tệp hoặc thư mục nào ở đây</p>
+                    </div>
+                    <div id="no-search-results"
+                        class="hidden flex flex-col items-center justify-center py-20 opacity-60">
+                        <i class="ph-fill ph-magnifying-glass text-5xl text-slate-300 mb-4"></i>
+                        <h2 class="text-xl font-bold text-slate-700">Không tìm thấy</h2>
+                        <p class="text-slate-500 text-sm mt-1">Hãy thử với một từ khóa khác</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT ACTIVITIES / CLIPBOARD SIDEBAR -->
+            <!-- On Mobile, it's absolute positioned covering main. On desktop it's a fixed column -->
+            <aside id="tab-clipboard"
+                class="hidden md:flex w-full md:w-80 lg:w-[340px] flex-col border-l border-slate-100 bg-slate-50/30 overflow-hidden shrink-0 absolute md:static inset-0 z-30 transition-transform">
+
+                <!-- Mobile back button to close tab -->
+                <div class="md:hidden flex items-center gap-3 px-4 py-4 border-b border-slate-100 bg-white shrink-0">
+                    <button onclick="switchTab('files')"
+                        class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-700 active:scale-90"><i
+                            class="ph-bold ph-caret-left"></i></button>
+                    <h2 class="font-bold text-slate-800 text-lg">Bảng tạm (Clipboard)</h2>
+                </div>
+
+                <div class="p-6 pb-2 shrink-0 hidden md:block">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center justify-between">Bảng tạm <i
+                            class="ph-fill ph-chat-circle-dots text-slate-300 text-2xl"></i></h2>
+                    <!-- <p class="text-xs font-medium text-slate-500 mt-1">Dán văn bản dùng chung trong mạng LAN</p> -->
+                </div>
+
+                <div id="clipboard-list"
+                    class="flex-1 overflow-y-auto px-4 md:px-6 flex flex-col gap-4 py-4 hide-scrollbar">
+                    <div class="text-center py-10 opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></div>
+                </div>
+
+                <!-- Clipboard input box -->
+                <div
+                    class="p-4 md:p-6 bg-white md:bg-transparent border-t border-slate-100 shrink-0 pb-[calc(80px+1rem)] md:pb-6 relative z-10">
+                    <div
+                        class="bg-white rounded-2xl border border-slate-200 p-1.5 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm flex items-end">
+                        <textarea id="shared-clipboard" rows="1"
+                            class="flex-1 max-h-[120px] bg-transparent border-none focus:ring-0 text-sm py-2 px-2.5 resize-none hide-scrollbar placeholder:text-slate-400 font-medium"
+                            placeholder="Nhập để dán (Ctrl+V)..." onkeydown="handleClipboardKeydown(event)"
+                            oninput="handleClipboardInput()"></textarea>
+                        <button id="btn-save-clipboard" onclick="saveClipboard()"
+                            class="w-10 h-10 shrink-0 bg-blue-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all mb-[1px] mr-[1px]">
+                            <i class="ph-fill ph-paper-plane-tilt text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- STORAGE WIDGET -->
+                    <div class="mt-6 bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hidden md:block">
+                        <h4 class="text-[13px] font-bold text-slate-600 uppercase tracking-wide">Dung lượng Host</h4>
+                        <p class="text-xs text-slate-500 mt-1"><span class="text-slate-800 font-bold text-lg"
+                                id="storage-used">0 GB</span> sử dụng</p>
+                        <div class="h-2 w-full bg-slate-100 rounded-full mt-3 overflow-hidden flex">
+                            <div class="bg-blue-400 h-full rounded-full transition-all" style="width: 60%"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </aside>
+        </div>
+    </div>
+</div>
+
+<!-- BOTTOM NAVIGATION (Mobile Only) -->
+<nav
+    class="md:hidden fixed z-[90] bottom-4 left-4 right-4 bg-slate-900 border border-slate-800 rounded-full shadow-2xl overflow-hidden pb-[var(--safe-area-bottom)]">
+    <div class="flex p-1.5 gap-1 relative">
+        <!-- Active pill -->
+        <div id="nav-active-pill"
+            class="absolute w-[calc(50%-6px)] h-[calc(100%-12px)] top-[6px] bottom-[6px] left-[6px] bg-slate-800 rounded-full transition-all duration-300 ease-spring pointer-events-none">
+        </div>
+
+        <button onclick="switchTab('files')"
+            class="flex-1 flex flex-col items-center justify-center py-2.5 text-white transition-colors relative z-10 active:scale-95 duration-200">
+            <i class="ph-fill ph-files text-[22px] mb-0.5"></i>
+            <span class="text-[10px] font-bold">Tệp</span>
+        </button>
+        <button onclick="switchTab('clipboard')"
+            class="flex-1 flex flex-col items-center justify-center py-2.5 text-slate-400 transition-colors relative z-10 active:scale-95 duration-200">
+            <i class="ph-fill ph-chat-circle-dots text-[22px] mb-0.5"></i>
+            <span class="text-[10px] font-bold">Lịch sử</span>
+        </button>
+
+        <!-- FAB inside Nav -->
+        <label for="picker-mobile"
+            class="w-14 h-14 bg-gradient-to-tr from-blue-500 to-cyan-400 text-white rounded-full flex items-center justify-center shrink-0 -mt-6 shadow-xl shadow-cyan-500/30 border-4 border-slate-900 z-20 cursor-pointer active:scale-90 transition-transform">
+            <i class="ph-bold ph-plus text-2xl"></i>
+            <input id="picker-mobile" type="file" multiple class="hidden" onchange="upload(this)" />
+        </label>
+    </div>
+</nav>
+
+<!-- MODALS: PREVIEW, DELETE, FOLDER CREATE -->
+<!-- ... The modal HTML codes can be appended easily below. It's essentially the same logic. ... -->

@@ -1,0 +1,96 @@
+<!-- MODAL XEM TRƯỚC (Preview) -->
+<div id="preview-modal"
+    class="fixed inset-0 z-[100] hidden flex-col bg-slate-900/70 backdrop-blur-md transition-opacity opacity-0"
+    onclick="if(event.target===this)closePreviewModal()">
+    <div
+        class="bg-white md:rounded-[32px] shadow-2xl w-full h-full md:h-[90vh] md:max-w-5xl md:m-auto flex flex-col overflow-hidden modal-slide-up border border-slate-200">
+        <!-- Header Preview -->
+        <div
+            class="flex items-center justify-between p-3 md:p-4 border-b border-slate-100 bg-white shrink-0 pt-[var(--safe-area-top)] md:pt-4">
+            <div class="flex items-center gap-3 overflow-hidden flex-1">
+                <button onclick="closePreviewModal()"
+                    class="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full active:scale-90 transition-transform md:hidden">
+                    <i class="ph ph-caret-left text-xl"></i>
+                </button>
+                <h3 id="preview-title" class="text-base font-bold text-slate-800 truncate"></h3>
+            </div>
+            <div class="flex items-center gap-2 pl-2">
+                <a id="preview-download-btn" href="#"
+                    class="h-10 px-6 bg-blue-500 text-white font-bold text-sm rounded-full flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all hover:bg-blue-600">
+                    <i class="ph ph-download-simple text-lg"></i> <span class="hidden sm:inline">Tải về</span>
+                </a>
+                <button onclick="closePreviewModal()"
+                    class="hidden md:flex w-10 h-10 items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Content Preview -->
+        <div id="preview-body"
+            class="flex-1 bg-slate-50/50 overflow-auto flex items-center justify-center p-0 md:p-6 relative pb-[var(--safe-area-bottom)] md:pb-6">
+        </div>
+    </div>
+</div>
+
+<!-- MODAL XÓA (Delete) -->
+<div id="delete-modal"
+    class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
+    onclick="if(event.target===this)closeDeleteModal()">
+    <div
+        class="bg-white w-full md:w-[400px] md:rounded-3xl rounded-t-3xl pt-6 pb-8 px-6 md:p-8 flex flex-col items-center modal-slide-up shadow-2xl relative border border-slate-100">
+        <div class="w-12 h-1.5 bg-slate-200 rounded-full mb-6 md:hidden"></div>
+        <div
+            class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-5 animate-pulse shadow-sm border border-red-100">
+            <i class="ph-fill ph-warning-circle text-4xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-2 text-center" id="delete-message">Bạn có chắc chắn muốn xóa?
+        </h3>
+        <p class="text-slate-500 text-center mb-8 font-medium line-clamp-2" id="delete-filename">Tệp tin</p>
+
+        <div class="flex w-full gap-3">
+            <button onclick="closeDeleteModal()"
+                class="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 active:scale-95 transition-all outline-none">Hủy
+                bỏ</button>
+            <button onclick="executeDelete()"
+                class="flex-1 py-3.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 active:scale-95 transition-all shadow-lg shadow-red-500/20 outline-none">Xóa
+                ngay</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL TẠO THƯ MỤC -->
+<div id="create-folder-modal"
+    class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
+    onclick="if(event.target===this)closeCreateFolderModal()">
+    <div
+        class="bg-white w-full md:w-[400px] md:rounded-3xl rounded-t-3xl pt-6 pb-12 px-6 md:p-8 md:pb-8 flex flex-col modal-slide-up shadow-2xl relative border border-slate-100">
+        <div class="w-12 h-1.5 bg-slate-200 rounded-full mb-6 md:hidden mx-auto"></div>
+
+        <div class="flex items-center gap-4 mb-6">
+            <div
+                class="w-12 h-12 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0 shadow-sm border border-amber-100">
+                <i class="ph-fill ph-folder-plus text-2xl"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-slate-800">Thư mục mới</h3>
+                <p class="text-sm text-slate-500 mt-0.5" id="create-folder-desc">Trong thư mục gốc</p>
+            </div>
+        </div>
+
+        <div class="relative group">
+            <i
+                class="ph-fill ph-folder absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors"></i>
+            <input type="text" id="new-folder-name" placeholder="Tên thư mục mới..."
+                class="w-full bg-slate-50 border border-slate-200 text-slate-800 pl-11 py-3.5 pr-4 rounded-2xl outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-400 font-medium transition-all"
+                onkeyup="if(event.key==='Enter') executeCreateFolder()" />
+        </div>
+
+        <div class="flex w-full gap-3 mt-8">
+            <button onclick="closeCreateFolderModal()"
+                class="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 active:scale-95 transition-all outline-none">Hủy</button>
+            <button onclick="executeCreateFolder()"
+                class="flex-1 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 active:scale-95 transition-all shadow-lg shadow-amber-500/20 outline-none">Tạo
+                thư mục</button>
+        </div>
+    </div>
+</div>
