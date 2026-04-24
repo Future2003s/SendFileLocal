@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nén PDF – LAN Share</title>
+    <link rel="icon" href="/images/cloud-storage.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: #f5f6fa;
+        }
+
+        /* Drop zone active state */
+        #drop-zone.drag-over {
+            filter: brightness(0.88);
+        }
+
+        /* Preset card active */
+        .preset-card.active {
+            border-color: #e8312a;
+            background: #fff0ef;
+        }
+
+        .preset-card.active .preset-label {
+            color: #c8241e;
+        }
+
+        /* Spin */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 0.7s linear infinite;
+            display: inline-block;
+        }
+
+        /* File item hover */
+        .file-item {
+            transition: box-shadow 0.15s;
+        }
+
+        .file-item:hover {
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Fade in */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-up {
+            animation: fadeUp 0.3s ease both;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+    <!-- HEADER -->
+    <header class="bg-white border-b border-slate-100 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+                <img src="/images/cloud-storage.png" class="w-9 h-9 object-contain" alt="LAN Share" />
+                <span class="font-extrabold text-slate-800 text-lg tracking-tight">LAN Share</span>
+            </a>
+            <a href="/"
+                class="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors">
+                <i class="ph ph-arrow-left"></i> Quay lại
+            </a>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="max-w-3xl mx-auto px-4 py-10">
+
+        <!-- PIN gate -->
+        <div id="pin-gate" class="hidden mb-6">
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+                <i class="ph-fill ph-lock text-amber-500 text-xl shrink-0"></i>
+                <div class="flex-1">
+                    <p class="font-bold text-amber-800 text-sm">Yêu cầu PIN</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <input id="pin-input" type="password" inputmode="numeric" placeholder="Nhập PIN..."
+                            class="px-3 py-1.5 bg-white border border-amber-200 rounded-lg text-sm font-semibold outline-none focus:border-amber-400 w-32" />
+                        <button onclick="savePIN()"
+                            class="px-3 py-1.5 bg-amber-500 text-white text-sm font-bold rounded-lg hover:bg-amber-600 active:scale-95 transition-all">Xác
+                            nhận</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <h1 class="text-3xl font-black text-slate-800 text-center mb-2">Nén PDF</h1>
+
+        <!-- DROP ZONE -->
+        <div id="drop-zone"
+            class="bg-[#e8312a] rounded-2xl border-2 border-dashed border-white/40 p-14 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all select-none"
+            onclick="document.getElementById('file-picker').click()"
+            ondragover="event.preventDefault(); this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="event.preventDefault(); this.classList.remove('drag-over'); addFiles(event.dataTransfer.files)">
+
+            <input type="file" id="file-picker" accept=".pdf" multiple class="hidden" onchange="addFiles(this.files)" />
+
+            <!-- Stacked PDF icon -->
+            <div class="flex items-end gap-1 -space-x-4">
+                <svg width="52" height="64" viewBox="0 0 52 64" fill="none">
+                    <rect width="52" height="64" rx="6" fill="white" fill-opacity="0.25" />
+                    <path d="M8 18h22M8 26h22M8 34h14" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+                </svg>
+                <svg width="58" height="72" viewBox="0 0 58 72" fill="none">
+                    <rect width="58" height="72" rx="6" fill="white" />
+                    <path d="M10 22h26M10 31h26M10 40h16" stroke="#e8312a" stroke-width="2.5" stroke-linecap="round" />
+                    <text x="8" y="62" font-size="12" font-weight="800" fill="#e8312a"
+                        font-family="sans-serif">PDF</text>
+                </svg>
+                <svg width="48" height="60" viewBox="0 0 48 60" fill="none">
+                    <rect width="48" height="60" rx="6" fill="white" fill-opacity="0.3" />
+                    <path d="M8 17h20M8 24h20M8 31h12" stroke="white" stroke-width="2" stroke-linecap="round"
+                        stroke-dasharray="3 3" />
+                </svg>
+            </div>
+
+            <!-- Button -->
+            <div class="flex items-stretch rounded-xl overflow-hidden shadow-lg" onclick="event.stopPropagation()">
+                <button onclick="document.getElementById('file-picker').click()"
+                    class="bg-white text-slate-800 font-bold px-6 py-3 flex items-center gap-2.5 hover:bg-slate-50 transition-colors text-sm">
+                    <i class="ph ph-file-pdf text-base text-red-500"></i>
+                    CHỌN CÁC TỆP
+                </button>
+                <div class="w-px bg-slate-100"></div>
+                <div class="relative" onclick="toggleDropdownMenu(event)">
+                    <button
+                        class="bg-white text-slate-600 px-4 py-3 flex items-center hover:bg-slate-50 transition-colors h-full">
+                        <i class="ph ph-caret-down text-sm"></i>
+                    </button>
+                    <div id="dropdown-menu"
+                        class="absolute right-0 top-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl w-48 py-1 hidden z-20">
+                        <button onclick="document.getElementById('file-picker').click(); hideDropdownMenu()"
+                            class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                            <i class="ph ph-file"></i> Chọn từ máy tính
+                        </button>
+                        <button onclick="showUrlInput(); hideDropdownMenu()"
+                            class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                            <i class="ph ph-link"></i> Từ URL (coming soon)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-white/75 text-sm">hoặc thả các tệp ở đây • Ctrl+V để dán</p>
+        </div>
+
+        <!-- PRESET SELECTOR -->
+        <div class="mt-8">
+            <p class="text-sm font-bold text-slate-600 mb-3">Mức độ nén</p>
+            <div class="grid grid-cols-3 gap-3">
+                <label class="cursor-pointer">
+                    <input type="radio" name="preset" value="high" class="hidden" />
+                    <div
+                        class="preset-card border-2 border-slate-200 bg-white rounded-2xl p-4 text-center transition-all hover:border-red-200">
+                        <i class="ph-fill ph-sparkle text-blue-400 text-2xl mb-1 block"></i>
+                        <div class="preset-label font-bold text-sm text-slate-700">Chất lượng</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">Nén nhẹ ~15%</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="preset" value="low" class="hidden" checked />
+                    <div class="preset-card active border-2 rounded-2xl p-4 text-center transition-all">
+                        <i class="ph-fill ph-scales text-red-500 text-2xl mb-1 block"></i>
+                        <div class="preset-label font-bold text-sm">Cân bằng</div>
+                        <div class="text-[11px] text-red-400 mt-0.5">Nén tốt ~50%</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="preset" value="medium" class="hidden" />
+                    <div
+                        class="preset-card border-2 border-slate-200 bg-white rounded-2xl p-4 text-center transition-all hover:border-red-200">
+                        <i class="ph-fill ph-rocket text-red-400 text-2xl mb-1 block"></i>
+                        <div class="preset-label font-bold text-sm text-slate-700">Nén mạnh</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">Nhỏ nhất ~80%</div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- FILE QUEUE -->
+        <div id="file-queue" class="mt-6 flex flex-col gap-3"></div>
+
+        <!-- COMPRESS BUTTON -->
+        <button id="compress-btn"
+            class="hidden mt-5 w-full py-4 bg-[#e8312a] hover:bg-[#c8241e] text-white font-black text-base rounded-2xl shadow-lg shadow-red-400/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            onclick="compressAll()">
+            <i class="ph-fill ph-file-pdf text-xl"></i> Nén tất cả PDF
+        </button>
+
+        <!-- INFO FOOTER -->
+        <div class="mt-12 grid sm:grid-cols-3 gap-4">
+            <div class="bg-white rounded-2xl p-4 border border-slate-100 text-center">
+                <i class="ph-fill ph-shield-check text-2xl text-emerald-500 mb-2 block"></i>
+                <div class="font-bold text-sm text-slate-700">Riêng tư 100%</div>
+                <div class="text-xs text-slate-400 mt-1">File xử lý trên mạng LAN của bạn</div>
+            </div>
+            <div class="bg-white rounded-2xl p-4 border border-slate-100 text-center">
+                <i class="ph-fill ph-lightning text-2xl text-amber-500 mb-2 block"></i>
+                <div class="font-bold text-sm text-slate-700">Nhanh chóng</div>
+                <div class="text-xs text-slate-400 mt-1">Ghostscript xử lý cực nhanh</div>
+            </div>
+            <div class="bg-white rounded-2xl p-4 border border-slate-100 text-center">
+                <i class="ph-fill ph-files text-2xl text-blue-500 mb-2 block"></i>
+                <div class="font-bold text-sm text-slate-700">Nhiều file</div>
+                <div class="text-xs text-slate-400 mt-1">Nén nhiều PDF cùng lúc</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ─── STATE ────────────────────────────────────────────────────────────────
+        let queue = []; // { id, file, state: 'pending'|'compressing'|'done'|'error', result }
+        let _pin = localStorage.getItem('lan_share_pin') || '';
+
+        // ─── PIN ──────────────────────────────────────────────────────────────────
+        function headers() {
+            return _pin ? { 'X-PIN': _pin } : {};
+        }
+
+        function savePIN() {
+            _pin = document.getElementById('pin-input').value.trim();
+            localStorage.setItem('lan_share_pin', _pin);
+            document.getElementById('pin-gate').classList.add('hidden');
+            showStatus('PIN đã lưu!', 'success');
+        }
+
+        // Check if PIN needed
+        (async () => {
+            const r = await fetch('/api/files', { headers: headers() });
+            if (r.status === 401) {
+                document.getElementById('pin-gate').classList.remove('hidden');
+            }
+        })();
+
+        // ─── PRESET CARDS ──────────────────────────────────────────────────────────
+        document.querySelectorAll('input[name="preset"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+                radio.closest('label').querySelector('.preset-card').classList.add('active');
+            });
+        });
+
+        // ─── DROPDOWN ─────────────────────────────────────────────────────────────
+        function toggleDropdownMenu(e) {
+            e.stopPropagation();
+            document.getElementById('dropdown-menu').classList.toggle('hidden');
+        }
+        function hideDropdownMenu() { document.getElementById('dropdown-menu').classList.add('hidden'); }
+        document.addEventListener('click', hideDropdownMenu);
+
+        // ─── FILE HANDLING ────────────────────────────────────────────────────────
+        window.addFiles = function (fileList) {
+            const pdfs = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+            if (pdfs.length === 0) {
+                showStatus('Chỉ hỗ trợ file .PDF', 'error');
+                return;
+            }
+            for (const file of pdfs) {
+                // Avoid duplicates
+                if (queue.some(i => i.file.name === file.name && i.file.size === file.size)) continue;
+                queue.push({ id: Date.now() + '_' + Math.random(), file, state: 'pending', result: null });
+            }
+            renderQueue();
+        };
+
+        // ─── Ctrl+V paste ─────────────────────────────────────────────────────────
+        document.addEventListener('paste', e => {
+            const files = e.clipboardData?.files;
+            if (files && files.length > 0) {
+                e.preventDefault();
+                addFiles(files);
+            }
+        });
+
+        // ─── QUEUE RENDER ─────────────────────────────────────────────────────────
+        function fmt(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        }
+
+        function renderQueue() {
+            const el = document.getElementById('file-queue');
+            const btn = document.getElementById('compress-btn');
+
+            if (queue.length === 0) { el.innerHTML = ''; btn.classList.add('hidden'); return; }
+
+            btn.classList.remove('hidden');
+            const hasPending = queue.some(i => i.state === 'pending' || i.state === 'error');
+            btn.disabled = !hasPending;
+            btn.style.opacity = hasPending ? '1' : '0.6';
+
+            el.innerHTML = queue.map((item, idx) => {
+                const icons = {
+                    pending: `<div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0"><i class="ph ph-clock text-slate-400 text-xl"></i></div>`,
+                    compressing: `<div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0"><i class="ph ph-circle-notch spin text-red-500 text-xl"></i></div>`,
+                    done: `<div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></div>`,
+                    error: `<div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0"><i class="ph-fill ph-warning-circle text-red-500 text-xl"></i></div>`,
+                }[item.state];
+
+                const info = item.result
+                    ? `<span class="text-emerald-600 font-bold">${fmt(item.result.originalSize)} → ${fmt(item.result.compressedSize)} <span class="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md text-xs font-bold">-${item.result.savedPercent}%</span></span>`
+                    : item.state === 'error'
+                        ? `<span class="text-red-500 text-xs">${item.errorMsg || 'Nén thất bại'}</span>`
+                        : `<span class="text-slate-400 text-xs">${fmt(item.file.size)}</span>`;
+
+                const actions = item.state === 'done'
+                    ? `<a href="${item.result.downloadUrl}" download="${item.result.outName}"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-[#e8312a] text-white text-xs font-bold rounded-lg hover:bg-[#c8241e] transition-colors shrink-0">
+              <i class="ph-bold ph-download-simple"></i> Tải về
+            </a>`
+                    : item.state === 'pending' || item.state === 'error'
+                        ? `<button onclick="removeItem(${idx})" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"><i class="ph ph-x"></i></button>`
+                        : '';
+
+                return `<div class="file-item bg-white rounded-2xl border border-slate-100 px-4 py-3 flex items-center gap-3 fade-up">
+          ${icons}
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-slate-700 text-sm truncate">${item.file.name}</p>
+            <div class="mt-0.5">${info}</div>
+          </div>
+          ${actions}
+        </div>`;
+            }).join('');
+        }
+
+        window.removeItem = function (idx) {
+            queue.splice(idx, 1);
+            renderQueue();
+        };
+
+        // ─── STATUS TOAST ─────────────────────────────────────────────────────────
+        let _statusTO = null;
+        function showStatus(msg, type = 'info') {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl text-sm font-bold shadow-lg z-50 transition-all';
+                document.body.appendChild(toast);
+            }
+            const colors = { success: 'bg-emerald-500 text-white', error: 'bg-red-500 text-white', info: 'bg-slate-800 text-white' };
+            toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl text-sm font-bold shadow-lg z-50 ${colors[type] || colors.info}`;
+            toast.textContent = msg;
+            clearTimeout(_statusTO);
+            _statusTO = setTimeout(() => toast.remove(), 4000);
+        }
+
+        // ─── COMPRESS ALL ─────────────────────────────────────────────────────────
+        window.compressAll = async function () {
+            const pin = _pin;
+            const preset = document.querySelector('input[name="preset"]:checked')?.value || 'low';
+            const pending = queue.filter(i => i.state === 'pending' || i.state === 'error');
+            if (!pending.length) return;
+
+            document.getElementById('compress-btn').disabled = true;
+
+            for (const item of pending) {
+                item.state = 'compressing';
+                renderQueue();
+
+                try {
+                    // Step 1: upload to temp dir
+                    const fd = new FormData();
+                    fd.append('files', new File([item.file], item.file.name, { type: 'application/pdf' }));
+
+                    const upParams = new URLSearchParams({ dir: '__pdf_tmp__' });
+                    if (pin) upParams.set('pin', pin);
+
+                    const upRes = await fetch(`/api/upload?${upParams}`, { method: 'POST', body: fd, headers: pin ? { 'X-PIN': pin } : {} });
+                    if (!upRes.ok) {
+                        if (upRes.status === 401) { document.getElementById('pin-gate').classList.remove('hidden'); }
+                        throw new Error('Upload thất bại');
+                    }
+
+                    // Step 2: compress
+                    const cParams = new URLSearchParams({
+                        name: encodeURIComponent(item.file.name),
+                        dir: '__pdf_tmp__',
+                        preset
+                    });
+                    const cRes = await fetch(`/api/compress-pdf?${cParams}`, { method: 'POST', headers: pin ? { 'X-PIN': pin } : {} });
+                    const cData = await cRes.json();
+
+                    if (!cData.ok) {
+                        item.state = 'error';
+                        const err = cData.error || '';
+                        if (err.includes('Ghostscript') || err.includes('gs_exit') || err.includes('GS_NOT_FOUND') || cData.status === 503) {
+                            item.errorMsg = '⚠️ Ghostscript chưa cài — tải tại ghostscript.com';
+                        } else if (err.includes('Nén thất bại')) {
+                            item.errorMsg = '⚠️ Ghostscript chưa cài hoặc lỗi nén. Tải GS tại ghostscript.com';
+                        } else {
+                            item.errorMsg = err || 'Nén thất bại';
+                        }
+                        renderQueue();
+                        continue;
+                    }
+
+                    // Step 3: build download URL
+                    const dlParams = new URLSearchParams({ dir: '__pdf_tmp__' });
+                    if (pin) dlParams.set('pin', pin);
+                    const downloadUrl = `/download/${encodeURIComponent(cData.outName)}?${dlParams}`;
+
+                    item.state = 'done';
+                    item.result = { ...cData, downloadUrl };
+                    showStatus(`✅ Nén xong! Giảm ${cData.savedPercent}%`, 'success');
+
+                } catch (err) {
+                    item.state = 'error';
+                    item.errorMsg = err.message;
+                }
+
+                renderQueue();
+            }
+        };
+    </script>
+</body>
+
+</html>

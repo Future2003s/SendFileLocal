@@ -181,6 +181,11 @@
           class="sidebar-btn flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold transition-all text-slate-600 hover:bg-white/40">
           <i class="ph ph-clipboard-text text-xl icon"></i> Bảng tạm
         </button>
+
+        <a href="/compress-pdf"
+          class="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all text-red-500 bg-slate-50/80 hover:bg-red-50 border-2 border-red-500/20 hover:border-red-500 shadow-sm active:scale-95">
+          <i class="ph-fill ph-file-pdf text-lg"></i> Nén PDF
+        </a>
       </nav>
 
       <!-- Auth Zone -->
@@ -317,6 +322,17 @@
                 </div>
                 <div class="flex items-center gap-3 shrink-0">
                   <span class="text-xs font-semibold text-slate-400" id="files-size">0 KB</span>
+
+                  <select onchange="updateSortMode(this.value)"
+                    class="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 outline-none cursor-pointer hover:bg-slate-100 transition-colors">
+                    <option value="time-desc">Xếp theo: Mới nhất</option>
+                    <option value="time-asc">Xếp theo: Cũ nhất</option>
+                    <option value="name-asc">Tên (A-Z)</option>
+                    <option value="name-desc">Tên (Z-A)</option>
+                    <option value="size-desc">Dung lượng giảm</option>
+                    <option value="size-asc">Dung lượng tăng</option>
+                  </select>
+
                   <button
                     class="text-blue-500 font-bold text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors"
                     onclick="toggleSelectAll()">Chọn tất cả</button>
@@ -339,6 +355,94 @@
               <h2 class="text-xl font-bold text-slate-700">Không tìm thấy</h2>
               <p class="text-slate-500 text-sm mt-1">Hãy thử với một từ khóa khác</p>
             </div>
+          </div>
+        </div>
+
+        <!-- ─── TAB: NÉN PDF ─── -->
+        <div id="tab-compress-pdf"
+          class="hidden flex-1 flex-col min-h-0 overflow-y-auto bg-[#f5f5f5] px-6 py-10 pb-24 md:pb-10">
+          <div class="max-w-2xl mx-auto w-full">
+
+            <!-- Title -->
+            <h2 class="text-2xl font-extrabold text-slate-800 text-center mb-8">Nén PDF</h2>
+
+            <!-- Drop Zone — Red solid background giống ilovepdf -->
+            <div id="pdf-drop-zone"
+              class="relative bg-[#e8312a] rounded-xl border-2 border-dashed border-white/50 p-12 flex flex-col items-center justify-center gap-5 cursor-pointer hover:bg-[#c8241e] transition-colors text-center"
+              ondragover="event.preventDefault(); this.classList.add('brightness-90')"
+              ondragleave="this.classList.remove('brightness-90')"
+              ondrop="event.preventDefault(); this.classList.remove('brightness-90'); handlePdfDropFiles(event.dataTransfer.files)">
+              <input type="file" id="pdf-file-picker" accept=".pdf" multiple class="hidden"
+                onchange="handlePdfDropFiles(this.files)" />
+
+              <!-- PDF Icon -->
+              <div class="flex items-end justify-center">
+                <svg width="72" height="72" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="4" y="8" width="48" height="62" rx="4" fill="white" fill-opacity="0.25" />
+                  <rect x="14" y="4" width="48" height="62" rx="4" fill="white" fill-opacity="0.5" />
+                  <rect x="24" y="0" width="48" height="72" rx="4" fill="white" />
+                  <path d="M36 22h16M36 30h16M36 38h10" stroke="#e8312a" stroke-width="2.5" stroke-linecap="round" />
+                  <text x="26" y="56" font-size="10" font-weight="800" fill="#e8312a"
+                    font-family="sans-serif">PDF</text>
+                </svg>
+              </div>
+
+              <!-- Button -->
+              <div class="flex items-stretch shadow-md rounded-lg overflow-hidden">
+                <button onclick="document.getElementById('pdf-file-picker').click(); event.stopPropagation()"
+                  class="bg-white text-slate-800 font-bold text-sm px-5 py-2.5 flex items-center gap-2 hover:bg-slate-50 transition-colors">
+                  <i class="ph ph-file text-base text-slate-500"></i>
+                  CHỌN CÁC TỆP
+                </button>
+                <div class="w-px bg-slate-200"></div>
+                <button onclick="event.stopPropagation()"
+                  class="bg-white text-slate-800 px-3 py-2.5 flex items-center hover:bg-slate-50 transition-colors">
+                  <i class="ph ph-caret-down text-sm text-slate-500"></i>
+                </button>
+              </div>
+
+              <p class="text-white/80 text-sm">hoặc thả các tệp ở đây</p>
+            </div>
+
+            <!-- Preset selector below zone -->
+            <div class="mt-8">
+              <p class="text-sm font-bold text-slate-600 mb-3">Mức độ nén</p>
+              <div class="grid grid-cols-3 gap-3">
+                <div
+                  class="cpcard border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-blue-300 hover:bg-blue-50/30 transition-all">
+                  <i class="ph-fill ph-sparkle text-blue-400 text-xl mb-1 block"></i>
+                  <div class="font-bold text-sm text-slate-700">Chất lượng</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">Nén nhẹ ~15%</div>
+                </div>
+                </label>
+                <label class="cursor-pointer"><input type="radio" name="pdf-standalone-preset" value="low"
+                    class="hidden" checked />
+                  <div class="cpcard border-2 border-red-400 bg-red-50/50 rounded-2xl p-4 text-center transition-all">
+                    <i class="ph-fill ph-scales text-red-500 text-xl mb-1 block"></i>
+                    <div class="font-bold text-sm text-red-700">Cân bằng</div>
+                    <div class="text-[10px] text-red-400 mt-0.5">Nén tốt ~50%</div>
+                  </div>
+                </label>
+                <label class="cursor-pointer"><input type="radio" name="pdf-standalone-preset" value="medium"
+                    class="hidden" />
+                  <div
+                    class="cpcard border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-red-300 hover:bg-red-50/30 transition-all">
+                    <i class="ph-fill ph-rocket text-red-400 text-xl mb-1 block"></i>
+                    <div class="font-bold text-sm text-slate-700">Nén mạnh</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Nhỏ nhất ~80%</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- File queue -->
+            <div id="pdf-queue" class="mt-6 flex flex-col gap-3"></div>
+
+            <button id="pdf-compress-all-btn"
+              class="hidden mt-4 w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-lg shadow-red-500/20 active:scale-95 transition-all items-center justify-center gap-2 text-base"
+              onclick="compressAllPdfFiles()">
+              <i class="ph-fill ph-file-pdf"></i> Nén tất cả PDF
+            </button>
           </div>
         </div>
 
@@ -479,6 +583,90 @@
     </div>
   </div>
 
+  <!-- MODAL NÉN PDF -->
+  <div id="compress-pdf-modal"
+    class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
+    onclick="if(event.target===this)closeCompressPdfModal()">
+    <div
+      class="bg-white w-full md:w-[460px] md:rounded-3xl rounded-t-3xl pt-6 pb-8 px-6 md:p-8 flex flex-col modal-slide-up shadow-2xl border border-slate-100 gap-3">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 md:hidden"></div>
+
+      <!-- Header -->
+      <div class="flex items-center gap-3">
+        <div
+          class="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center shadow-sm border border-red-100 shrink-0">
+          <i class="ph-fill ph-file-pdf text-2xl text-red-500"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-800">Giảm dung lượng PDF</h3>
+          <p class="text-sm text-slate-500 font-medium">Giảm kích cỡ mà không làm giảm chất lượng đáng kể</p>
+        </div>
+      </div>
+
+      <!-- File info -->
+      <div class="bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
+        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Tệp được chọn</p>
+        <p id="compress-filename" class="font-bold text-slate-700 text-sm truncate">—</p>
+        <p id="compress-original-size" class="text-xs text-slate-400 mt-0.5">—</p>
+      </div>
+
+      <!-- Preset selector -->
+      <div>
+        <p class="text-sm font-bold text-slate-600 mb-2">Mức độ nén</p>
+        <div class="grid grid-cols-3 gap-2">
+          <label class="compress-preset cursor-pointer">
+            <input type="radio" name="compress-preset" value="high" class="hidden" />
+            <div
+              class="compress-preset-card border-2 border-slate-200 rounded-2xl p-3 text-center transition-all hover:border-blue-400">
+              <i class="ph-fill ph-sparkle text-blue-500 text-xl mb-1 block"></i>
+              <div class="font-bold text-sm text-slate-700">Chất lượng</div>
+              <div class="text-[10px] text-slate-400">Nén nhẹ ~15%</div>
+            </div>
+          </label>
+          <label class="compress-preset cursor-pointer">
+            <input type="radio" name="compress-preset" value="low" class="hidden" checked />
+            <div
+              class="compress-preset-card border-2 border-blue-500 bg-blue-50 rounded-2xl p-3 text-center transition-all">
+              <i class="ph-fill ph-scales text-blue-600 text-xl mb-1 block"></i>
+              <div class="font-bold text-sm text-blue-700">Cân bằng</div>
+              <div class="text-[10px] text-blue-400">Nén tốt ~50%</div>
+            </div>
+          </label>
+          <label class="compress-preset cursor-pointer">
+            <input type="radio" name="compress-preset" value="medium" class="hidden" />
+            <div
+              class="compress-preset-card border-2 border-slate-200 rounded-2xl p-3 text-center transition-all hover:border-red-400">
+              <i class="ph-fill ph-rocket text-red-500 text-xl mb-1 block"></i>
+              <div class="font-bold text-sm text-slate-700">Nén mạnh</div>
+              <div class="text-[10px] text-slate-400">Nhỏ nhất ~80%</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Result (hidden until done) -->
+      <div id="compress-result" class="hidden bg-emerald-50 rounded-2xl px-4 py-3 border border-emerald-200">
+        <div class="flex items-center gap-2">
+          <i class="ph-fill ph-check-circle text-emerald-500 text-2xl"></i>
+          <div>
+            <p class="font-bold text-emerald-700 text-sm" id="compress-result-text">Nén hoàn tất!</p>
+            <p class="text-xs text-emerald-600" id="compress-result-sub"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex gap-3 mt-2">
+        <button onclick="closeCompressPdfModal()"
+          class="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 active:scale-95 transition-all outline-none">Đóng</button>
+        <button id="compress-pdf-btn" onclick="executeCompressPdf()"
+          class="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 active:scale-95 transition-all shadow-lg shadow-red-500/20 outline-none flex items-center justify-center gap-2">
+          <i class="ph-fill ph-file-zip"></i> Nén PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL TẠO THƯ MỤC -->
   <div id="create-folder-modal"
     class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
@@ -522,52 +710,46 @@
     const isLocalPreview = ['blob:', 'file:', 'data:'].includes(window.location.protocol);
     let _pinTimer = null;
 
-    // ─── TABS MANAGEMENT (Mobile) ─────────────────────────────────────────────
+    // ─── TABS MANAGEMENT ──────────────────────────────────────────────────────
+    let _currentTab = 'files';
+
     function switchTab(tabId) {
-      if (window.innerWidth >= 768) return; // Desktop luôn hiện cả 2
+      _currentTab = tabId;
+      const tabFiles = document.getElementById('tab-files');
+      const tabClip = document.getElementById('tab-clipboard');
+      const tabPdf = document.getElementById('tab-compress-pdf');
+      const fab = document.getElementById('fab-upload');
+      const isDesktop = window.innerWidth >= 768;
 
-      const isFiles = tabId === 'files';
-      const tabFiles = $('tab-files');
-      const tabClip = $('tab-clipboard');
-
-      const fab = $('fab-upload');
-      if (isFiles) {
-        tabFiles.classList.remove('tab-hidden');
-        tabClip.classList.remove('tab-active');
-        if (fab) fab.style.display = '';
+      if (isDesktop) {
+        if (tabId === 'compress-pdf') {
+          // Full-width compress view: hide files + clipboard sidebar
+          tabFiles.style.display = 'none';
+          tabPdf.style.display = 'flex';
+          tabClip.style.display = 'none';
+          if (fab) fab.style.display = 'none';
+        } else {
+          // Normal view: show files + clipboard sidebar
+          tabFiles.style.display = 'flex';
+          tabPdf.style.display = 'none';
+          tabClip.style.display = 'flex';
+          if (fab) fab.style.display = '';
+        }
       } else {
-        tabFiles.classList.add('tab-hidden');
-        tabClip.classList.add('tab-active');
-        if (fab) fab.style.display = 'none';
-        // Scroll clipboard to bottom when opened
-        setTimeout(() => {
-          const list = $('clipboard-list');
-          list.scrollTop = list.scrollHeight;
-        }, 50);
-      }
-
-      // Update Nav UI
-      const navF = $('nav-files');
-      const navC = $('nav-clipboard');
-
-      if (isFiles) {
-        navF.classList.replace('text-slate-400', 'text-blue-400');
-        navF.querySelector('.nav-indicator').classList.replace('bg-transparent', 'bg-blue-100');
-        navF.querySelector('i').classList.replace('ph', 'ph-fill');
-
-        navC.classList.replace('text-blue-400', 'text-slate-400');
-        navC.querySelector('.nav-indicator').classList.replace('bg-blue-100', 'bg-transparent');
-        navC.querySelector('i').classList.replace('ph-fill', 'ph');
-      } else {
-        navC.classList.replace('text-slate-400', 'text-blue-400');
-        navC.querySelector('.nav-indicator').classList.replace('bg-transparent', 'bg-blue-100');
-        navC.querySelector('i').classList.replace('ph', 'ph-fill');
-
-        navF.classList.replace('text-blue-400', 'text-slate-400');
-        navF.querySelector('.nav-indicator').classList.replace('bg-blue-100', 'bg-transparent');
-        navF.querySelector('i').classList.replace('ph-fill', 'ph');
+        // Mobile: full-screen tabs
+        tabFiles.style.display = tabId === 'files' ? 'flex' : 'none';
+        tabClip.style.display = tabId === 'clipboard' ? 'flex' : 'none';
+        tabPdf.style.display = tabId === 'compress-pdf' ? 'flex' : 'none';
+        if (fab) fab.style.display = tabId === 'files' ? '' : 'none';
+        if (tabId === 'clipboard') {
+          setTimeout(() => {
+            const l = document.getElementById('clipboard-list');
+            if (l) l.scrollTop = l.scrollHeight;
+          }, 50);
+        }
       }
     }
+
 
     // Xử lý resize để reset layout trên desktop/mobile
     window.addEventListener('resize', () => {
@@ -616,6 +798,25 @@
     let lastEtag = null;
     let _refreshTimer = null;
     let _toastTimer = null;
+
+    function updateSortMode(mode) {
+      currentSortMode = mode;
+      renderFiles(currentFiles, currentFolders);
+    }
+
+    function sortFiles(arr) {
+      const copy = [...arr];
+      switch (currentSortMode) {
+        case 'size-desc': return copy.sort((a, b) => (b.size || 0) - (a.size || 0));
+        case 'size-asc': return copy.sort((a, b) => (a.size || 0) - (b.size || 0));
+        case 'name-desc': return copy.sort((a, b) => b.name.localeCompare(a.name));
+        case 'name-asc': return copy.sort((a, b) => a.name.localeCompare(b.name));
+        case 'time-asc': return copy.sort((a, b) => (a.mtime || 0) - (b.mtime || 0));
+        case 'time-desc':
+        default:
+          return copy.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+      }
+    }
 
     // ─── FOLDER NAVIGATION ────────────────────────────────────────────
     let currentDir = '';
@@ -1128,7 +1329,7 @@
 
     // ─── SEARCH / SORT / FILTER ──────────────────────────────────────
     let currentSearchTerm = '';
-    let currentSortMode = 'date-desc';
+    let currentSortMode = 'time-desc';
     let _searchTimer = null;
 
     function handleSearchInput() {
@@ -2009,6 +2210,7 @@
       if (currentSortMode === 'size-desc') filteredFolders = [...filteredFolders].sort((a, b) => (b.totalSize || 0) - (a.totalSize || 0));
       else if (currentSortMode === 'size-asc') filteredFolders = [...filteredFolders].sort((a, b) => (a.totalSize || 0) - (b.totalSize || 0));
       else if (currentSortMode === 'name-desc') filteredFolders = [...filteredFolders].sort((a, b) => b.name.localeCompare(a.name));
+      else filteredFolders = [...filteredFolders].sort((a, b) => a.name.localeCompare(b.name)); // name-asc or fallback
 
       let totalDSize = 0;
       let fSize = 0;
@@ -2315,6 +2517,323 @@
 
       selectedFiles.clear();
       updateSelectionUI();
+    };
+
+    // --- HANDLE ZIP TRIGGER (NÉN FILE TRÊN SERVER) ---
+    window.handleZipTrigger = async function () {
+      if (selectedFiles.size === 0) {
+        showStatus('Vui lòng chọn ít nhất 1 tệp/thư mục để nén', 'error');
+        return;
+      }
+
+      const files = Array.from(selectedFiles);
+      showStatus(`Đang chuẩn bị nén ${files.length} mục...`, 'loading');
+
+      try {
+        await lazyLoad('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+        const zip = new JSZip();
+        let loadedCount = 0;
+
+        for (const encName of files) {
+          const fileName = decodeURIComponent(encName);
+          showStatus(`Đang đọc dữ liệu: ${fileName} (${loadedCount + 1}/${files.length})`, 'loading');
+
+          const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
+          // We can only reliably download files via the API. Folders zip requires recursive logic.
+          // Since LAN Share flat downloads file blocks, we just fetch each directly.
+          try {
+            const res = await fetch(`/download/${encName}${dirParam}`, { headers: headers() });
+            if (!res.ok) throw new Error("Fetch failed: " + fileName);
+            const blob = await res.blob();
+            zip.file(fileName, blob);
+            loadedCount++;
+          } catch (e) {
+            console.error("Skipping failed file read", fileName, e);
+          }
+        }
+
+        if (loadedCount === 0) {
+          showStatus('Không có tệp nào hợp lệ để nén', 'error');
+          return;
+        }
+
+        showStatus(`Đang xử lý thuật toán NÉN... Đừng đóng trang`, 'loading');
+
+        const zipContent = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } }, function (metadata) {
+          showStatus(`Tiến trình nén Archive: ${metadata.percent.toFixed(0)}%`, 'loading');
+        });
+
+        showStatus('Đang lưu tệp nén vào máy chủ...', 'loading');
+
+        const zipFile = new File([zipContent], `Archive_${Date.now()}.zip`, { type: "application/zip" });
+        const fd = new FormData();
+        fd.append('files', zipFile);
+
+        const pinVal = headers()['X-PIN'] || '';
+        const params = new URLSearchParams();
+        if (pinVal) params.set('pin', pinVal);
+        if (currentDir) params.set('dir', currentDir);
+        const qs = params.toString();
+
+        const uploadRes = await fetch(`/api/upload${qs ? '?' + qs : ''}`, {
+          method: 'POST',
+          body: fd,
+          headers: headers()
+        });
+
+        if (uploadRes.ok) {
+          showStatus('Nén và lưu tệp thành công!', 'success');
+          selectedFiles.clear();
+          updateSelectionUI();
+          // Giao diện sẽ tự động làm mới nhờ SSE
+        } else {
+          showStatus('Lỗi không thể lưu trữ bản nén', 'error');
+        }
+
+      } catch (e) {
+        console.error("ZIP Action Error:", e);
+        showStatus('Quá trình nén thất bại', 'error');
+      }
+    };
+
+    // ─── PDF COMPRESS UI ─────────────────────────────────────────────────────
+    let _compressPdfTarget = null; // { encName, fileName, size }
+
+    // Style preset cards when clicked
+    document.addEventListener('change', (e) => {
+      if (e.target.name === 'compress-preset') {
+        document.querySelectorAll('.compress-preset-card').forEach(c => {
+          c.className = 'compress-preset-card border-2 border-slate-200 rounded-2xl p-3 text-center transition-all hover:border-blue-400';
+        });
+        const sel = e.target.closest('.compress-preset')?.querySelector('.compress-preset-card');
+        if (sel) sel.className = 'compress-preset-card border-2 border-blue-500 bg-blue-50 rounded-2xl p-3 text-center transition-all';
+      }
+    });
+
+    window.openCompressPdfModal = function (encName, fileName, fileSizeBytes) {
+      _compressPdfTarget = { encName, fileName, size: fileSizeBytes };
+      document.getElementById('compress-filename').textContent = fileName;
+      document.getElementById('compress-original-size').textContent = `Kích cỡ gốc: ${fmt(fileSizeBytes)}`;
+      document.getElementById('compress-result').classList.add('hidden');
+
+      const btn = document.getElementById('compress-pdf-btn');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ph-fill ph-file-zip"></i> Nén PDF';
+
+      const modal = document.getElementById('compress-pdf-modal');
+      modal.classList.remove('hidden');
+      requestAnimationFrame(() => modal.classList.remove('opacity-0'));
+    };
+
+    window.closeCompressPdfModal = function () {
+      const modal = document.getElementById('compress-pdf-modal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    };
+
+    window.executeCompressPdf = async function () {
+      if (!_compressPdfTarget) return;
+      const { encName, fileName } = _compressPdfTarget;
+
+      const preset = document.querySelector('input[name="compress-preset"]:checked')?.value || 'low';
+      const btn = document.getElementById('compress-pdf-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Đang nén...';
+      document.getElementById('compress-result').classList.add('hidden');
+
+      showStatus('Đang nén PDF bằng Ghostscript...', 'loading');
+
+      try {
+        const params = new URLSearchParams({ name: encName, preset });
+        if (currentDir) params.set('dir', currentDir);
+        const res = await fetch(`/api/compress-pdf?${params.toString()}`, {
+          method: 'POST',
+          headers: headers()
+        });
+
+        const data = await res.json();
+
+        if (data.ok) {
+          const sub = `${fmt(data.originalSize)} → ${fmt(data.compressedSize)} (giảm ${data.savedPercent}%)`;
+          document.getElementById('compress-result-text').textContent = `Nén thành công! Đã lưu file: ${data.outName}`;
+          document.getElementById('compress-result-sub').textContent = sub;
+          document.getElementById('compress-result').classList.remove('hidden');
+          showStatus(`Nén hoàn tất! Giảm ${data.savedPercent}% dung lượng`, 'success');
+          btn.innerHTML = '<i class="ph-fill ph-check-circle"></i> Hoàn tất';
+        } else {
+          showStatus(data.error || 'Nén thất bại', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="ph-fill ph-file-zip"></i> Nén PDF';
+          // Nếu Ghostscript chưa cài, hiển thị hướng dẫn
+          if (data.error?.includes('Ghostscript')) {
+            document.getElementById('compress-result-text').textContent = '⚠️ Ghostscript chưa được cài đặt';
+            document.getElementById('compress-result-sub').textContent = 'Tải tại: ghostscript.com/releases/gsdnld.html';
+            document.getElementById('compress-result').classList.remove('hidden');
+            document.getElementById('compress-result').classList.replace('bg-emerald-50', 'bg-amber-50');
+            document.getElementById('compress-result').classList.replace('border-emerald-200', 'border-amber-200');
+            document.querySelector('#compress-result i').className = 'ph-fill ph-warning text-amber-500 text-2xl';
+          }
+        }
+      } catch (e) {
+        console.error('Compress PDF error:', e);
+        showStatus('Lỗi kết nối đến máy chủ', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph-fill ph-file-zip"></i> Nén PDF';
+      }
+    };
+
+    // Nút "Nén PDF" bên sidebar: chọn file PDF đã chọn hoặc nhắc chọn file
+    window.handleZipTrigger_pdf = function () {
+      // Tìm file PDF trong selectedFiles
+      const pdfFiles = currentFiles.filter(f => {
+        const enc = encodeURIComponent(f.name.normalize('NFC'));
+        return selectedFiles.has(enc) && f.name.toLowerCase().endsWith('.pdf');
+      });
+      if (pdfFiles.length === 0) {
+        showStatus('Vui lòng chọn ít nhất 1 file .PDF để nén', 'error');
+        return;
+      }
+      if (pdfFiles.length > 1) {
+        showStatus('Chỉ có thể nén 1 file PDF mỗi lần', 'error');
+        return;
+      }
+      const f = pdfFiles[0];
+      openCompressPdfModal(encodeURIComponent(f.name.normalize('NFC')), f.name, f.size);
+    };
+
+    // ─── PDF STANDALONE TAB LOGIC ────────────────────────────────────────────
+    // Preset card selection (standalone tab)
+    document.addEventListener('change', (e) => {
+      if (e.target.name === 'pdf-standalone-preset') {
+        document.querySelectorAll('.cpcard').forEach(c => {
+          c.className = 'cpcard border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-blue-300 hover:bg-blue-50/30 transition-all';
+        });
+        const sel = e.target.closest('label')?.querySelector('.cpcard');
+        if (sel) sel.className = 'cpcard border-2 border-red-400 bg-red-50/50 rounded-2xl p-4 text-center transition-all';
+      }
+    });
+
+    // Ctrl+V paste support for the PDF compress tab
+    document.addEventListener('paste', (e) => {
+      if (!document.getElementById('tab-compress-pdf')?.classList.contains('flex')) return;
+      const files = e.clipboardData?.files;
+      if (files && files.length > 0) {
+        e.preventDefault();
+        handlePdfDropFiles(files);
+      }
+    });
+
+    let _pdfQueue = []; // { file: File, id, state: 'pending'|'compressing'|'done'|'error', result }
+
+    window.handlePdfDropFiles = function (fileList) {
+      const pdfs = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+      if (pdfs.length === 0) {
+        showStatus('Chỉ hỗ trợ file .PDF', 'error');
+        return;
+      }
+      for (const file of pdfs) {
+        _pdfQueue.push({ id: Date.now() + Math.random(), file, state: 'pending', result: null });
+      }
+      renderPdfQueue();
+    };
+
+    function renderPdfQueue() {
+      const container = document.getElementById('pdf-queue');
+      const btn = document.getElementById('pdf-compress-all-btn');
+      if (!container) return;
+
+      if (_pdfQueue.length === 0) {
+        container.innerHTML = '';
+        btn.classList.add('hidden');
+        return;
+      }
+
+      btn.classList.remove('hidden');
+      btn.classList.add('flex');
+
+      container.innerHTML = _pdfQueue.map((item) => {
+        const stateIcon = {
+          pending: '<i class="ph ph-clock text-slate-400 text-2xl"></i>',
+          compressing: '<i class="ph ph-spinner animate-spin text-red-500 text-2xl"></i>',
+          done: '<i class="ph-fill ph-check-circle text-emerald-500 text-2xl"></i>',
+          error: '<i class="ph-fill ph-warning-circle text-red-500 text-2xl"></i>',
+        }[item.state];
+
+        const resultInfo = item.result
+          ? `<span class="text-xs text-emerald-600 font-bold">${fmt(item.result.originalSize)} → ${fmt(item.result.compressedSize)} (giảm ${item.result.savedPercent}%)</span>`
+          : `<span class="text-xs text-slate-400">${fmt(item.file.size)}</span>`;
+
+        const downloadBtn = item.state === 'done'
+          ? `<a href="${item.result.downloadUrl}" download="${item.result.outName}"
+               class="text-xs font-bold text-blue-500 flex items-center gap-1 hover:text-blue-600">
+               <i class="ph-bold ph-download-simple"></i> Tải về
+             </a>`
+          : '';
+
+        return `<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+          ${stateIcon}
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-slate-700 text-sm truncate">${item.file.name}</p>
+            ${resultInfo}
+          </div>
+          ${downloadBtn}
+        </div>`;
+      }).join('');
+    }
+
+    window.compressAllPdfFiles = async function () {
+      const pending = _pdfQueue.filter(i => i.state === 'pending' || i.state === 'error');
+      if (pending.length === 0) return;
+
+      const preset = document.querySelector('input[name="pdf-standalone-preset"]:checked')?.value || 'low';
+
+      for (const item of pending) {
+        item.state = 'compressing';
+        renderPdfQueue();
+
+        try {
+          // Step 1: Upload the PDF to a temp endpoint
+          showStatus(`Đang xử lý: ${item.file.name}`, 'loading');
+          const fd = new FormData();
+          fd.append('files', new File([item.file], item.file.name, { type: 'application/pdf' }));
+
+          const pinVal = headers()['X-PIN'] || '';
+          const uploadParams = new URLSearchParams();
+          if (pinVal) uploadParams.set('pin', pinVal);
+          uploadParams.set('dir', '__pdf_tmp__');
+
+          const uploadRes = await fetch(`/api/upload?${uploadParams.toString()}`, {
+            method: 'POST',
+            body: fd,
+            headers: headers()
+          });
+
+          if (!uploadRes.ok) throw new Error('Upload thất bại');
+
+          // Step 2: Call compress API
+          const enc = encodeURIComponent(item.file.name);
+          const compressParams = new URLSearchParams({ name: enc, dir: '__pdf_tmp__', preset });
+          const cRes = await fetch(`/api/compress-pdf?${compressParams.toString()}`, {
+            method: 'POST', headers: headers()
+          });
+          const cData = await cRes.json();
+          if (!cData.ok) throw new Error(cData.error || 'Nén thất bại');
+
+          // Step 3: Build download URL for the compressed file
+          const dlParams = new URLSearchParams({ dir: '__pdf_tmp__' });
+          const downloadUrl = `/download/${encodeURIComponent(cData.outName)}?${dlParams.toString()}`;
+
+          item.state = 'done';
+          item.result = { ...cData, downloadUrl };
+          showStatus(`Nén xong: ${cData.outName} (giảm ${cData.savedPercent}%)`, 'success');
+
+        } catch (e) {
+          item.state = 'error';
+          console.error('PDF standalone compress error:', e);
+          showStatus(`Lỗi: ${e.message}`, 'error');
+        }
+        renderPdfQueue();
+      }
     };
 
   </script>

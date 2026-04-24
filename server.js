@@ -7,6 +7,7 @@ import os from "os";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
 import compression from "compression";
+import { spawn } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,8 +78,8 @@ app.use(
     maxAge: "1d",
     etag: true,
     lastModified: true,
+    extensions: ['html'],
     setHeaders(res, filePath) {
-      // HTML không cache để luôn nhận bản mới nhất
       if (filePath.endsWith(".html")) {
         res.setHeader("Cache-Control", "no-cache");
       }
@@ -142,6 +143,11 @@ function getLocalIPv4() {
   return "127.0.0.1";
 }
 
+// Serve trang Nén PDF trước khi qua PIN middleware
+app.get('/compress-pdf', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'compress-pdf.html'));
+});
+
 // ─── PIN MIDDLEWARE ───────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   if (!PIN) return next();
@@ -150,6 +156,7 @@ app.use((req, res, next) => {
   if (req.method === "GET" && (
     req.path === "/" ||
     req.path.startsWith("/index") ||
+    req.path.startsWith("/compress-pdf") ||
     req.path.startsWith("/download/") ||
     req.path.startsWith("/api/clipboard")
   ))
@@ -577,6 +584,145 @@ app.delete("/api/files/:name", async (req, res) => {
     if (e.code === "ENOENT") return res.status(404).json({ ok: false, error: "Not found" });
     console.error("DELETE error:", e);
     res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+});
+
+// ─── PDF COMPRESS API ─────────────────────────────────────────────────────────
+
+// Tìm đường dẫn Ghostscript: thử nhiều vị trí tiêu chuẩn trên Windows/Linux
+function findGhostscript() {
+  const candidates = [
+    'gswin64c', 'gswin32c', 'gs',
+    'C:\\Program Files\\gs\\gs10.05.0\\bin\\gswin64c.exe',
+    'C:\\Program Files\\gs\\gs10.04.0\\bin\\gswin64c.exe',
+    'C:\\Program Files\\gs\\gs10.03.1\\bin\\gswin64c.exe',
+    'C:\\Program Files\\gs\\gs10.02.1\\bin\\gswin64c.exe',
+    'C:\\Program Files (x86)\\gs\\gs10.05.0\\bin\\gswin32c.exe',
+  ];
+  // Thử tìm thêm trong thư mục Program Files\gs\
+  try {
+    const gsRoot = 'C:\\Program Files\\gs';
+    if (fs.existsSync(gsRoot)) {
+      const versions = fs.readdirSync(gsRoot).sort().reverse();
+      for (const v of versions) {
+        const p = path.join(gsRoot, v, 'bin', 'gswin64c.exe');
+        if (fs.existsSync(p)) return p;
+      }
+    }
+  } catch { }
+  return candidates[0]; // Fallback to PATH lookup
+}
+
+const GS_BIN = findGhostscript();
+
+// Mức chất lượng nén PDF:  screen < ebook < printer < prepress
+const COMPRESS_PRESETS = {
+  low: { dPDFSETTINGS: '/ebook', label: 'Cân bằng' },   // ~150dpi ảnh
+  medium: { dPDFSETTINGS: '/screen', label: 'Nén mạnh' },   // ~72dpi ảnh, nhỏ nhất
+  high: { dPDFSETTINGS: '/printer', label: 'Chất lượng' }, // ~300dpi, ít nén hơn
+};
+
+app.post('/api/compress-pdf', async (req, res) => {
+  const name = req.query.name;
+  const dir = req.query.dir || '';
+  const preset = req.query.preset || 'low'; // low | medium | high
+
+  if (!name || typeof name !== 'string') {
+    return res.status(400).json({ ok: false, error: 'Tên file không hợp lệ' });
+  }
+
+  // Giải mã và định vị file
+  const decodedName = decodeURIComponent(name);
+  const baseDir = safeDirPath(dir) || UPLOAD_DIR;
+  const inputPath = path.resolve(baseDir, decodedName);
+
+  if (!inputPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+    return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+  }
+  if (!fs.existsSync(inputPath)) {
+    return res.status(404).json({ ok: false, error: 'Không tìm thấy file' });
+  }
+  if (!decodedName.toLowerCase().endsWith('.pdf')) {
+    return res.status(400).json({ ok: false, error: 'Chỉ hỗ trợ file PDF' });
+  }
+
+  const cfg = COMPRESS_PRESETS[preset] || COMPRESS_PRESETS.low;
+  const ext = path.extname(decodedName);
+  const base = path.basename(decodedName, ext);
+  const outName = `${base}_compressed${ext}`;
+  const outputPath = path.join(baseDir, outName);
+
+  // Ghostscript trên Windows: dùng forward slash tránh lỗi escape
+  const gsOutput = outputPath.split(path.sep).join('/');
+  const gsInput = inputPath.split(path.sep).join('/');
+
+
+  const args = [
+    '-sDEVICE=pdfwrite',
+    '-dCompatibilityLevel=1.5',
+    `-dPDFSETTINGS=${cfg.dPDFSETTINGS}`,
+    '-dNOPAUSE',
+    '-dBATCH',
+    '-dSAFER',
+    `-sOutputFile=${gsOutput}`,
+    gsInput,
+  ];
+
+  try {
+    await new Promise((resolve, reject) => {
+      const proc = spawn(GS_BIN, args, { stdio: 'pipe' });
+      let stderr = '';
+      let done = false;
+      proc.stderr.on('data', d => { stderr += d.toString(); });
+      proc.on('error', (err) => {
+        if (done) return; done = true;
+        if (err.code === 'ENOENT' || err.code === 'EACCES') {
+          reject(new Error('GS_NOT_FOUND'));
+        } else {
+          reject(err);
+        }
+      });
+      proc.on('close', code => {
+        if (done) return; done = true;
+        if (code === 0) resolve();
+        else {
+          // Nếu stderr chứa lỗi tìm file → Ghostscript chưa cài
+          const errOut = stderr.toLowerCase();
+          if (errOut.includes('not found') || errOut.includes('cannot find') || errOut.includes('no such file')) {
+            reject(new Error('GS_NOT_FOUND'));
+          } else {
+            reject(new Error(`gs_exit_${code}: ${stderr.slice(0, 300)}`));
+          }
+        }
+      });
+    });
+
+    const originalSize = (await fsPromises.stat(inputPath)).size;
+    const compressedSize = (await fsPromises.stat(outputPath)).size;
+    const savedPercent = Math.round((1 - compressedSize / originalSize) * 100);
+
+    res.json({
+      ok: true,
+      outName,
+      originalSize,
+      compressedSize,
+      savedPercent,
+      preset: cfg.label,
+    });
+
+    sseSend('changed', { type: 'upload', uploaded: [outName], dir: dir || '', at: Date.now() });
+
+  } catch (e) {
+    if (e.message === 'GS_NOT_FOUND') {
+      return res.status(503).json({
+        ok: false,
+        error: 'Ghostscript chưa được cài đặt. Vui lòng cài tại: https://www.ghostscript.com/releases/gsdnld.html'
+      });
+    }
+    console.error('PDF compress error:', e);
+    // Dọn dẹp file output lỗi nếu có
+    try { if (fs.existsSync(outputPath)) await fsPromises.unlink(outputPath); } catch { }
+    res.status(500).json({ ok: false, error: 'Nén thất bại, vui lòng thử lại' });
   }
 });
 
