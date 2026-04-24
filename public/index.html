@@ -2288,10 +2288,15 @@
       modal.classList.add('flex');
       setTimeout(() => modal.classList.remove('opacity-0'), 10);
 
-      const path = `/download/${encName}${dirParam}&preview=1`;
+      const previewQS = currentDir ? `?dir=${encodeURIComponent(currentDir)}&preview=1` : '?preview=1';
+      const path = `/download/${encName}${previewQS}`;
+
       const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext);
       const isVideo = ['mp4', 'webm'].includes(ext);
       const isAudio = ['mp3', 'wav', 'ogg'].includes(ext);
+      const isPdf = ext === 'pdf';
+      const isText = ['txt', 'md', 'json', 'js', 'css', 'html', 'csv', 'log', 'xml'].includes(ext);
+      const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
 
       if (isImage) {
         body.innerHTML = `<img src="${path}" class="max-w-full max-h-full object-contain rounded-xl shadow-lg" onerror="this.onerror=null;this.src='/download/${encName}${dirParam}';this.parentElement.innerHTML='<div class=\\'text-center p-8\\'><i class=\\'ph-fill ph-image text-6xl text-slate-400 mb-4\\'></i><p class=\\'font-bold text-slate-700\\'>Lỗi khi tải ảnh</p></div>';" />`;
@@ -2299,6 +2304,17 @@
         body.innerHTML = `<video src="${path}" controls autoplay class="max-w-full max-h-full rounded-xl shadow-lg"></video>`;
       } else if (isAudio) {
         body.innerHTML = `<audio src="${path}" controls autoplay class="w-full max-w-md"></audio>`;
+      } else if (isPdf || isText) {
+        body.innerHTML = `<iframe src="${path}" class="w-full h-full min-h-[60vh] bg-white rounded-xl shadow-lg border-0"></iframe>`;
+      } else if (isOffice) {
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.match(/^172\.(1[6-9]|2\d|3[0-1])\./)) {
+          body.innerHTML = `<div class="text-center p-8"><i class="ph-fill ph-file-doc text-6xl text-blue-500 mb-4"></i><p class="font-bold text-slate-700">Tính năng xem trước tài liệu Office yêu cầu tên miền công khai.</p><p class="text-sm text-slate-500 mt-2">Vui lòng "Tải về" để xem nội dung do mạng LAN không hỗ trợ xem trực tuyến.</p></div>`;
+        } else {
+          const fileUrl = encodeURIComponent(window.location.origin + path);
+          const vUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${fileUrl}`;
+          body.innerHTML = `<iframe src="${vUrl}" class="w-full h-full min-h-[70vh] bg-white rounded-xl shadow-lg border-0"></iframe>`;
+        }
       } else {
         body.innerHTML = `<div class="text-center p-8"><i class="ph-fill ph-file text-6xl text-slate-400 mb-4"></i><p class="font-bold text-slate-700">Không thể xem trước tệp này</p></div>`;
       }
