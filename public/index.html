@@ -2180,6 +2180,9 @@
        <div class="flex items-center justify-between mt-2">
          <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">${fmt(f.size)}</span>
          <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button class="action-btn w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-teal-600 transition-all" onclick="event.stopPropagation(); shareFileLink('${encName}', '${dirParam}')" title="Chia sẻ link tải">
+               <i class="ph-bold ph-share-network"></i>
+            </button>
             <a href="/download/${encName}${dirParam}" download="${fileName}" class="action-btn w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 transition-all" onclick="event.stopPropagation()">
                <i class="ph-bold ph-download-simple"></i>
             </a>
@@ -2933,6 +2936,37 @@
         renderPdfQueue();
       }
     };
+
+    // ─── SHARE FILE LINK ──────────────────────────────────────────────────────
+    window.shareFileLink = function shareFileLink(encName, dirParam) {
+      // Tạo link xem trước public – không cần PIN
+      // dirParam dạng "?dir=Foo" hoặc ""
+      const url = `${window.location.origin}/share/${encName}${dirParam}`;
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url).then(() => {
+          showStatus('🔗 Đã sao chép link xem trước!', 'success');
+        }).catch(() => {
+          _fallbackCopyText(url);
+        });
+      } else {
+        _fallbackCopyText(url);
+      }
+    };
+
+    function _fallbackCopyText(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try {
+        document.execCommand('copy');
+        showStatus('✅ Đã sao chép link chia sẻ!', 'success');
+      } catch {
+        showStatus('❌ Không thể sao chép – hãy copy thủ công', 'error');
+      }
+      document.body.removeChild(ta);
+    }
 
   </script>
 </body>

@@ -148,6 +148,12 @@ app.get('/compress-pdf', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'compress-pdf.html'));
 });
 
+// Serve trang Share Preview trước khi qua PIN middleware
+app.get('/share/:name', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'share.html'));
+});
+
+
 // ─── PIN MIDDLEWARE ───────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   if (!PIN) return next();
@@ -157,10 +163,15 @@ app.use((req, res, next) => {
     req.path === "/" ||
     req.path.startsWith("/index") ||
     req.path.startsWith("/compress-pdf") ||
+    req.path.startsWith("/share/") ||
     req.path.startsWith("/download/") ||
     req.path.startsWith("/api/clipboard")
   ))
     return next();
+
+  // Cho phép HEAD /download/ để trang share kiểm tra kích thước file
+  if (req.method === "HEAD" && req.path.startsWith("/download/")) return next();
+
 
   if (req.method === "POST" && req.path.startsWith("/api/clipboard")) {
     return next();
