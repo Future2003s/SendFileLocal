@@ -616,7 +616,7 @@ function findGhostscript() {
       }
     }
   } catch { }
-  return candidates[0]; // Fallback to PATH lookup
+  return process.platform === 'win32' ? 'gswin64c' : 'gs'; // Fallback to PATH lookup based on platform
 }
 
 const GS_BIN = findGhostscript();
