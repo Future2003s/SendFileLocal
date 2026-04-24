@@ -176,7 +176,7 @@
 
         <!-- PRESET SELECTOR -->
         <div class="mt-8">
-            <p class="text-sm font-bold text-slate-600 mb-3">Mức độ nén</p>
+            <p class="text-sm font-bold text-slate-600 mb-3">Mức độ nén - Lựa chọn 3 mức độ</p>
             <div class="grid grid-cols-3 gap-3">
                 <label class="cursor-pointer">
                     <input type="radio" name="preset" value="high" class="hidden" />
@@ -221,18 +221,15 @@
         <div class="mt-12 grid sm:grid-cols-3 gap-4">
             <div class="bg-white rounded-2xl p-4 border border-slate-100 text-center">
                 <i class="ph-fill ph-shield-check text-2xl text-emerald-500 mb-2 block"></i>
-                <div class="font-bold text-sm text-slate-700">Riêng tư 100%</div>
-                <div class="text-xs text-slate-400 mt-1">File xử lý trên mạng LAN của bạn</div>
+                <div class="font-bold text-sm text-slate-700">Bảo Mật</div>
             </div>
             <div class="bg-white rounded-2xl p-4 border border-slate-100 text-center">
                 <i class="ph-fill ph-lightning text-2xl text-amber-500 mb-2 block"></i>
-                <div class="font-bold text-sm text-slate-700">Nhanh chóng</div>
-                <div class="text-xs text-slate-400 mt-1">Ghostscript xử lý cực nhanh</div>
+                <div class="font-bold text-sm text-slate-700">Ghostscript</div>
             </div>
             <div class="bg-white rounded-2xl p-4 border border-slate-100 text-center">
                 <i class="ph-fill ph-files text-2xl text-blue-500 mb-2 block"></i>
                 <div class="font-bold text-sm text-slate-700">Nhiều file</div>
-                <div class="text-xs text-slate-400 mt-1">Nén nhiều PDF cùng lúc</div>
             </div>
         </div>
     </main>
@@ -332,7 +329,12 @@
                     ? `<span class="text-emerald-600 font-bold">${fmt(item.result.originalSize)} → ${fmt(item.result.compressedSize)} <span class="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md text-xs font-bold">-${item.result.savedPercent}%</span></span>`
                     : item.state === 'error'
                         ? `<span class="text-red-500 text-xs">${item.errorMsg || 'Nén thất bại'}</span>`
-                        : `<span class="text-slate-400 text-xs">${fmt(item.file.size)}</span>`;
+                        : (item.uploadPercent !== undefined && item.uploadPercent !== null && item.state === 'compressing')
+                            ? `<div class="mt-1"><span class="text-blue-500 font-bold text-[11px] mb-1 block">Đang tải lên: ${item.uploadPercent}%</span>
+                               <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                 <div class="bg-blue-500 h-full transition-all duration-200" style="width: ${item.uploadPercent}%"></div>
+                               </div></div>`
+                            : `<span class="text-slate-400 text-xs">${fmt(item.file.size)}</span>`;
 
                 const actions = item.state === 'done'
                     ? `<a href="${item.result.downloadUrl}" download="${item.result.outName}"
@@ -397,11 +399,33 @@
                     const upParams = new URLSearchParams({ dir: '__pdf_tmp__' });
                     if (pin) upParams.set('pin', pin);
 
-                    const upRes = await fetch(`/api/upload?${upParams}`, { method: 'POST', body: fd, headers: pin ? { 'X-PIN': pin } : {} });
+                    item.uploadPercent = 0;
+                    const upRes = await new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('POST', `/api/upload?${upParams}`);
+                        if (pin) xhr.setRequestHeader('X-PIN', pin);
+                        xhr.upload.onprogress = (e) => {
+                            if (e.lengthComputable) {
+                                item.uploadPercent = Math.round((e.loaded / e.total) * 100);
+                                renderQueue();
+                            }
+                        };
+                        xhr.onload = () => {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                resolve({ ok: true, status: xhr.status });
+                            } else {
+                                resolve({ ok: false, status: xhr.status });
+                            }
+                        };
+                        xhr.onerror = () => reject(new Error('Network error'));
+                        xhr.send(fd);
+                    });
+
                     if (!upRes.ok) {
                         if (upRes.status === 401) { document.getElementById('pin-gate').classList.remove('hidden'); }
                         throw new Error('Upload thất bại');
                     }
+                    item.uploadPercent = null;
 
                     // Step 2: compress
                     const cParams = new URLSearchParams({

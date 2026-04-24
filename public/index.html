@@ -151,13 +151,17 @@
 </head>
 
 <body class="text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900 overflow-hidden">
-  <!-- TOAST NOTIFICATION -->
   <div id="toast-container"
-    class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] hidden flex-col items-center gap-2 w-full max-w-[90%] md:max-w-sm pt-[var(--safe-area-top)]">
-    <div id="toast"
-      class="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl font-medium text-sm w-full bg-white/90 backdrop-blur-xl border border-white/50 transition-all">
-      <i id="toast-icon" class="ph ph-spinner animate-spin text-xl text-blue-500"></i>
-      <span id="toast-msg" class="flex-1 truncate text-slate-700 font-semibold">Đang xử lý...</span>
+    class="fixed top-6 left-1/2 -translate-x-1/2 z-[150] shadow-2xl transition-all duration-300 pointer-events-none transform -translate-y-full opacity-0">
+    <div
+      class="bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden flex flex-col border border-slate-100 min-w-[280px]">
+      <div class="p-3 px-5 flex items-center gap-3">
+        <i id="toast-icon" class="ph ph-spinner animate-spin text-xl text-blue-500"></i>
+        <span id="toast-msg" class="flex-1 truncate text-slate-700 font-semibold">Đang xử lý...</span>
+      </div>
+      <div class="h-1.5 w-full bg-slate-100 hidden" id="toast-progress-wrap">
+        <div id="toast-progress" class="bg-blue-500 h-full transition-all duration-200" style="width: 0%"></div>
+      </div>
     </div>
   </div>
 
@@ -169,7 +173,6 @@
     <aside class="hidden md:flex w-[260px] flex-col pt-8 pb-6 px-4 h-full shrink-0 z-10">
       <div class="flex items-center gap-3 px-4 mb-10">
         <img src="/images/cloud-storage.png" class="w-12 h-12 object-contain drop-shadow-md" alt="LAN Share" />
-        <h1 class="text-[19px] font-extrabold text-slate-800 tracking-tight">File Upload</h1>
       </div>
 
       <nav class="flex-1 flex flex-col gap-2">
@@ -709,6 +712,7 @@
     const $ = (id) => document.getElementById(id) || document.createElement("div");
     const isLocalPreview = ['blob:', 'file:', 'data:'].includes(window.location.protocol);
     let _pinTimer = null;
+    let _statusTO = null;
 
     // ─── TABS MANAGEMENT ──────────────────────────────────────────────────────
     let _currentTab = 'files';
@@ -797,7 +801,6 @@
     let _pendingFolderDelete = null; // { folderName, fullPath }
     let lastEtag = null;
     let _refreshTimer = null;
-    let _toastTimer = null;
 
     function updateSortMode(mode) {
       currentSortMode = mode;
@@ -985,51 +988,46 @@
       return fetch(path, options);
     }
 
-    // ─── TOAST UI (Thay cho Status bar cũ) ────────────────────────────────────
+    // ─── TOAST UI & PROGRESS BAR ──────────────────────────────────────────────
     function showStatus(text, type = 'loading') {
-      const container = $("toast-container");
-      const toast = $("toast");
-      const icon = $("toast-icon");
-      const msg = $("toast-msg");
+      const c = document.getElementById('toast-container');
+      const i = document.getElementById('toast-icon');
+      const m = document.getElementById('toast-msg');
+      const pWrap = document.getElementById('toast-progress-wrap');
 
-      clearTimeout(_toastTimer);
-
-      if (!text) {
-        container.classList.add('hidden');
-        toast.classList.remove('toast-enter');
-        return;
-      }
-
-      container.classList.remove('hidden');
-      toast.classList.remove('bg-slate-900', 'bg-red-900/30', 'bg-green-900/30', 'border-slate-800', 'border-red-200', 'border-green-200');
-      icon.className = 'text-xl ';
-
-      // Reset animation
-      toast.classList.remove('toast-enter');
-      void toast.offsetWidth; // trigger reflow
-      toast.classList.add('toast-enter');
+      // Clear the progress bar when status changes, unless updating progress type specifically
+      if (type !== 'progress' && pWrap) pWrap.classList.add('hidden');
 
       if (type === 'loading') {
-        toast.classList.add('bg-slate-900', 'border-slate-800');
-        icon.classList.add('ph', 'ph-spinner', 'animate-spin', 'text-blue-500');
-        msg.className = 'flex-1 truncate text-slate-300';
+        i.className = 'ph ph-spinner animate-spin text-xl text-blue-500';
+      } else if (type === 'success') {
+        i.className = 'ph-fill ph-check-circle text-xl text-emerald-500';
       } else if (type === 'error') {
-        toast.classList.add('bg-red-900/30', 'border-red-200');
-        icon.classList.add('ph-fill', 'ph-warning-circle', 'text-red-500');
-        msg.className = 'flex-1 truncate text-red-700 font-semibold';
-      } else {
-        toast.classList.add('bg-green-900/30', 'border-green-200');
-        icon.classList.add('ph-fill', 'ph-check-circle', 'text-green-500');
-        msg.className = 'flex-1 truncate text-green-700 font-semibold';
+        i.className = 'ph-fill ph-warning-circle text-xl text-red-500';
+      } else if (type === 'progress') {
+        i.className = 'ph ph-cloud-arrow-up text-xl text-blue-500';
       }
 
-      msg.textContent = text;
+      if (text) m.textContent = text;
 
-      if (type !== 'loading') {
-        _toastTimer = setTimeout(() => {
-          container.classList.add('hidden');
-          toast.classList.remove('toast-enter');
+      c.classList.remove('transform', '-translate-y-full', 'opacity-0');
+      c.classList.add('toast-enter');
+
+      if (_statusTO) clearTimeout(_statusTO);
+      if (type !== 'loading' && type !== 'progress') {
+        _statusTO = setTimeout(() => {
+          c.classList.remove('toast-enter');
+          c.classList.add('transform', '-translate-y-full', 'opacity-0');
         }, 3000);
+      }
+    }
+
+    function updateProgress(percent) {
+      const pWrap = document.getElementById('toast-progress-wrap');
+      const pBar = document.getElementById('toast-progress');
+      if (pWrap && pBar) {
+        pWrap.classList.remove('hidden');
+        pBar.style.width = Math.max(0, Math.min(100, Math.round(percent))) + '%';
       }
     }
 
@@ -1402,14 +1400,35 @@
       for (const f of fileList) fd.append('files', new File([f], f.name.normalize('NFC'), { type: f.type }));
 
       const dirLabel = targetDir || 'thư mục gốc';
-      showStatus(`Đang tải ${fileList.length} file vào ${dirLabel}...`, 'loading');
+      showStatus(`Đang tải lên 0%...`, 'progress');
+      updateProgress(0);
+
       try {
         const pinVal = headers()['X-PIN'] || '';
         const params = new URLSearchParams();
         if (pinVal) params.set('pin', pinVal);
         if (targetDir) params.set('dir', targetDir);
         const qs = params.toString();
-        const res = await safeFetch(`/api/upload${qs ? '?' + qs : ''}`, { method: 'POST', body: fd, headers: headers() });
+
+        const res = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `/api/upload${qs ? '?' + qs : ''}`);
+          const hdrs = headers();
+          for (let k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const p = Math.round((e.loaded / e.total) * 100);
+              showStatus(`Đang tải lên: ${p}% (vào ${dirLabel})`, 'progress');
+              updateProgress(p);
+            }
+          };
+
+          xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300 });
+          xhr.onerror = () => reject(new Error('Network error'));
+          xhr.send(fd);
+        });
+
         if (!res.ok) showStatus('Lỗi tải lên', 'error');
         else {
           showStatus(`Đã tải lên ${fileList.length} file thành công!`, 'success');
@@ -2307,13 +2326,59 @@
       } else if (isPdf || isText) {
         body.innerHTML = `<iframe src="${path}" class="w-full h-full min-h-[60vh] bg-white rounded-xl shadow-lg border-0"></iframe>`;
       } else if (isOffice) {
-        const hostname = window.location.hostname;
-        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.match(/^172\.(1[6-9]|2\d|3[0-1])\./)) {
-          body.innerHTML = `<div class="text-center p-8"><i class="ph-fill ph-file-doc text-6xl text-blue-500 mb-4"></i><p class="font-bold text-slate-700">Tính năng xem trước tài liệu Office yêu cầu tên miền công khai.</p><p class="text-sm text-slate-500 mt-2">Vui lòng "Tải về" để xem nội dung do mạng LAN không hỗ trợ xem trực tuyến.</p></div>`;
+        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
+        if (!isLocalHost) {
+          const fullUrl = window.location.origin + path;
+          body.innerHTML = `<iframe src="https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fullUrl)}" class="w-full h-full min-h-[60vh] bg-white rounded-xl shadow-lg border-0"></iframe>`;
         } else {
-          const fileUrl = encodeURIComponent(window.location.origin + path);
-          const vUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${fileUrl}`;
-          body.innerHTML = `<iframe src="${vUrl}" class="w-full h-full min-h-[70vh] bg-white rounded-xl shadow-lg border-0"></iframe>`;
+          if (ext === 'docx') {
+            body.innerHTML = `<div id="offline-docx-viewer" class="w-full h-full min-h-[60vh] bg-white rounded-xl shadow-inner border border-slate-200 overflow-auto p-4 md:p-8 text-slate-800"><div class="flex items-center justify-center h-full"><i class="ph ph-spinner animate-spin text-4xl text-blue-500"></i></div></div>`;
+            const scriptId = 'mammoth-lib';
+            const loadAndRender = () => {
+              fetch(path).then(res => res.arrayBuffer()).then(arr => {
+                mammoth.convertToHtml({ arrayBuffer: arr }).then(res => {
+                  let html = res.value;
+                  if (!html.trim()) html = '<p class="text-slate-400 text-center">Tài liệu rỗng</p>';
+                  document.getElementById('offline-docx-viewer').innerHTML = `<div style="max-width:800px; margin:0 auto; font-family:Inter,sans-serif; line-height:1.6;">${html}</div>`;
+                }).catch(e => {
+                  document.getElementById('offline-docx-viewer').innerHTML = '<div class="text-red-500 p-4">Lỗi xem trước DOCX: ' + e.message + '</div>';
+                });
+              });
+            };
+            if (!document.getElementById(scriptId)) {
+              const s = document.createElement('script');
+              s.id = scriptId;
+              s.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+              s.onload = loadAndRender;
+              document.body.appendChild(s);
+            } else {
+              loadAndRender();
+            }
+          } else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+            body.innerHTML = `<div id="offline-excel-viewer" class="w-full h-full min-h-[60vh] bg-white rounded-xl shadow-inner border border-slate-200 overflow-auto p-4 text-xs text-slate-800"><div class="flex items-center justify-center h-full"><i class="ph ph-spinner animate-spin text-4xl text-blue-500"></i></div></div>`;
+            const scriptId = 'sheetjs-lib';
+            const loadAndRender = () => {
+              fetch(path).then(res => res.arrayBuffer()).then(arr => {
+                const wb = XLSX.read(arr, { type: 'array' });
+                let html = XLSX.utils.sheet_to_html(wb.Sheets[wb.SheetNames[0]]);
+                html = html.replace(/<table/g, '<table class="w-full text-left border-collapse whitespace-nowrap"').replace(/<td/g, '<td class="border border-slate-200 px-3 py-2 text-sm"').replace(/<th/g, '<th class="border border-slate-200 px-3 py-2 bg-slate-50 font-bold"');
+                document.getElementById('offline-excel-viewer').innerHTML = html;
+              }).catch(e => {
+                document.getElementById('offline-excel-viewer').innerHTML = '<div class="text-red-500 p-4">Lỗi xem trước Excel: ' + e.message + '</div>';
+              });
+            };
+            if (!document.getElementById(scriptId)) {
+              const s = document.createElement('script');
+              s.id = scriptId;
+              s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+              s.onload = loadAndRender;
+              document.body.appendChild(s);
+            } else {
+              loadAndRender();
+            }
+          } else {
+            body.innerHTML = `<div class="text-center p-8"><i class="ph-fill ph-file-doc text-6xl text-blue-500 mb-4"></i><p class="font-bold text-slate-700">Định dạng ${ext.toUpperCase()} không hỗ trợ xem trước trên Localhost</p><p class="text-sm text-slate-500 mt-2">Vui lòng "Tải về" để xem các file pptx/doc cũ.</p></div>`;
+          }
         }
       } else {
         body.innerHTML = `<div class="text-center p-8"><i class="ph-fill ph-file text-6xl text-slate-400 mb-4"></i><p class="font-bold text-slate-700">Không thể xem trước tệp này</p></div>`;
@@ -2508,13 +2573,15 @@
           loadedCount++;
         }
 
-        showStatus(`Bắt đầu xử lý nén ZIP... Đừng đóng trang`, 'loading');
+        showStatus(`Bắt đầu tiến trình nén ZIP...`, 'progress');
+        updateProgress(0);
 
         const content = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } }, function updateCallback(metadata) {
-          showStatus(`Tiến trình nén ZIP: ${metadata.percent.toFixed(0)}%`, 'loading');
+          showStatus(`Tiến trình nén ZIP: ${metadata.percent.toFixed(0)}%`, 'progress');
+          updateProgress(metadata.percent);
         });
 
-        showStatus('Hoàn tất! Hệ thống sẽ tải tệp .zip...', 'success');
+        showStatus('Hoàn tất! Hệ thống sẽ lưu tệp...', 'success');
 
         const url = window.URL.createObjectURL(content);
         const a = document.createElement('a');
@@ -2809,7 +2876,9 @@
 
         try {
           // Step 1: Upload the PDF to a temp endpoint
-          showStatus(`Đang xử lý: ${item.file.name}`, 'loading');
+          showStatus(`Đang tải lên: 0%`, 'progress');
+          updateProgress(0);
+
           const fd = new FormData();
           fd.append('files', new File([item.file], item.file.name, { type: 'application/pdf' }));
 
@@ -2818,10 +2887,23 @@
           if (pinVal) uploadParams.set('pin', pinVal);
           uploadParams.set('dir', '__pdf_tmp__');
 
-          const uploadRes = await fetch(`/api/upload?${uploadParams.toString()}`, {
-            method: 'POST',
-            body: fd,
-            headers: headers()
+          const uploadRes = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/api/upload?${uploadParams.toString()}`);
+            const hdrs = headers();
+            for (let k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+
+            xhr.upload.onprogress = (e) => {
+              if (e.lengthComputable) {
+                const p = Math.round((e.loaded / e.total) * 100);
+                showStatus(`Đang tải lên: ${p}%`, 'progress');
+                updateProgress(p);
+              }
+            };
+
+            xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300 });
+            xhr.onerror = () => reject(new Error('Network error'));
+            xhr.send(fd);
           });
 
           if (!uploadRes.ok) throw new Error('Upload thất bại');
