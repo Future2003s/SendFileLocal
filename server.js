@@ -281,6 +281,7 @@ async function getFilesWithEtag(dir = '') {
   const fileEntries = [];
 
   for (const entry of entries) {
+    if (entry.name === '__pdf_tmp__') continue;
     const fullPath = path.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       // Đếm số item và tính dung lượng thư mục
@@ -492,7 +493,9 @@ app.post("/api/upload", dynamicUpload, async (req, res) => {
     const uploaded = (req.files ?? []).map((f) => f.filename);
     const dir = req.query.dir || '';
     res.json({ ok: true, uploaded });
-    sseSend("changed", { type: "upload", uploaded, dir, at: Date.now() });
+    if (dir !== '__pdf_tmp__') {
+      sseSend("changed", { type: "upload", uploaded, dir, at: Date.now() });
+    }
   } catch (e) {
     console.error("POST /api/upload error:", e);
     res.status(500).json({ ok: false, error: "Upload failed" });
@@ -550,6 +553,9 @@ app.get("/download/:name", (req, res) => {
 
   res.sendFile(filePath, { dotfiles: "deny" }, (err) => {
     if (err && !res.headersSent) res.status(500).end();
+    if (!err && req.query.dir === '__pdf_tmp__') {
+      try { fs.unlink(filePath, () => { }); } catch { }
+    }
   });
 });
 
@@ -663,10 +669,12 @@ app.post('/api/compress-pdf', async (req, res) => {
     `-dPDFSETTINGS=${cfg.dPDFSETTINGS}`,
     '-dNOPAUSE',
     '-dBATCH',
-    '-dSAFER',
     `-sOutputFile=${gsOutput}`,
     gsInput,
   ];
+
+  console.log('[GS] cmd:', GS_BIN);
+  console.log('[GS] args:', args);
 
   try {
     await new Promise((resolve, reject) => {
@@ -710,7 +718,13 @@ app.post('/api/compress-pdf', async (req, res) => {
       preset: cfg.label,
     });
 
-    sseSend('changed', { type: 'upload', uploaded: [outName], dir: dir || '', at: Date.now() });
+    if (dir !== '__pdf_tmp__') {
+      sseSend('changed', { type: 'upload', uploaded: [outName], dir: dir || '', at: Date.now() });
+    }
+
+    try {
+      if (fs.existsSync(inputPath)) await fsPromises.unlink(inputPath);
+    } catch { }
 
   } catch (e) {
     if (e.message === 'GS_NOT_FOUND') {
