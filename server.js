@@ -8,6 +8,7 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import compression from "compression";
 import { spawn } from "child_process";
+import archiver from "archiver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -153,6 +154,56 @@ app.get('/share/:name', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'share.html'));
 });
 
+// API lấy danh sách file trong thư mục chia sẻ (không cần PIN)
+app.get("/api/share/folder/:name", async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name);
+    const dir = req.query.dir || '';
+    const baseDir = safeDirPath(dir) || UPLOAD_DIR;
+    const p = path.resolve(baseDir, name);
+
+    if (!p.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+      return res.status(400).json({ ok: false, error: "Đường dẫn không hợp lệ" });
+    }
+
+    let filePath = p;
+    if (!fs.existsSync(p)) {
+      try {
+        const allFiles = fs.readdirSync(baseDir);
+        const match = allFiles.find(f => tryFixMojibake(f) === name || f === name);
+        if (!match) return res.status(404).json({ ok: false, error: "Thư mục không tồn tại" });
+        filePath = path.join(baseDir, match);
+      } catch {
+        return res.status(404).json({ ok: false, error: "Thư mục không tồn tại" });
+      }
+    }
+
+    const stat = fs.statSync(filePath);
+    if (!stat.isDirectory()) {
+      return res.status(400).json({ ok: false, error: "Không phải thư mục" });
+    }
+
+    const entries = await fsPromises.readdir(filePath, { withFileTypes: true });
+    const files = [];
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const fullPath = path.join(filePath, entry.name);
+      try {
+        const st = await fsPromises.stat(fullPath);
+        files.push({
+          name: entry.name,
+          isDir: entry.isDirectory(),
+          size: entry.isDirectory() ? 0 : st.size,
+          mtime: st.mtimeMs,
+        });
+      } catch { }
+    }
+    res.json({ ok: true, files });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: "Lỗi đọc thư mục" });
+  }
+});
+
 
 // ─── PIN MIDDLEWARE ───────────────────────────────────────────────────────────
 app.use((req, res, next) => {
@@ -165,6 +216,7 @@ app.use((req, res, next) => {
     req.path.startsWith("/compress-pdf") ||
     req.path.startsWith("/share/") ||
     req.path.startsWith("/download/") ||
+    req.path.startsWith("/api/share/") ||
     req.path.startsWith("/api/clipboard")
   ))
     return next();
@@ -385,6 +437,84 @@ app.post("/api/folders", async (req, res) => {
   }
 });
 
+// Đổi tên thư mục
+app.put("/api/folders", async (req, res) => {
+  try {
+    const { oldName, newName, dir } = req.body || {};
+    if (!oldName || !newName || typeof oldName !== 'string' || typeof newName !== 'string' || !oldName.trim() || !newName.trim()) {
+      return res.status(400).json({ ok: false, error: 'Tên thư mục không hợp lệ' });
+    }
+
+    const safeOldName = oldName.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    const safeNewName = newName.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    
+    const parentDir = safeDirPath(dir || '');
+    if (!parentDir) return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+
+    const oldPath = path.join(parentDir, safeOldName);
+    const newPath = path.join(parentDir, safeNewName);
+
+    if (!oldPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase()) ||
+        !newPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+      return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+    }
+
+    if (!fs.existsSync(oldPath)) {
+      return res.status(404).json({ ok: false, error: 'Thư mục không tồn tại' });
+    }
+
+    if (fs.existsSync(newPath)) {
+      return res.status(409).json({ ok: false, error: 'Tên thư mục mới đã tồn tại' });
+    }
+
+    await fsPromises.rename(oldPath, newPath);
+    res.json({ ok: true, oldName: safeOldName, newName: safeNewName });
+    sseSend('changed', { type: 'folder-rename', oldName: safeOldName, newName: safeNewName, dir: dir || '', at: Date.now() });
+  } catch (e) {
+    console.error('PUT /api/folders error:', e);
+    res.status(500).json({ ok: false, error: 'Lỗi đổi tên thư mục' });
+  }
+});
+
+// Đổi tên file
+app.put("/api/files", async (req, res) => {
+  try {
+    const { oldName, newName, dir } = req.body || {};
+    if (!oldName || !newName || typeof oldName !== 'string' || typeof newName !== 'string' || !oldName.trim() || !newName.trim()) {
+      return res.status(400).json({ ok: false, error: 'Tên file không hợp lệ' });
+    }
+
+    const safeOldName = oldName.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    const safeNewName = newName.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    
+    const parentDir = safeDirPath(dir || '');
+    if (!parentDir) return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+
+    const oldPath = path.join(parentDir, safeOldName);
+    const newPath = path.join(parentDir, safeNewName);
+
+    if (!oldPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase()) ||
+        !newPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+      return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+    }
+
+    if (!fs.existsSync(oldPath)) {
+      return res.status(404).json({ ok: false, error: 'File không tồn tại' });
+    }
+
+    if (fs.existsSync(newPath)) {
+      return res.status(409).json({ ok: false, error: 'Tên file mới đã tồn tại' });
+    }
+
+    await fsPromises.rename(oldPath, newPath);
+    res.json({ ok: true, oldName: safeOldName, newName: safeNewName });
+    sseSend('changed', { type: 'file-rename', oldName: safeOldName, newName: safeNewName, dir: dir || '', at: Date.now() });
+  } catch (e) {
+    console.error('PUT /api/files error:', e);
+    res.status(500).json({ ok: false, error: 'Lỗi đổi tên file' });
+  }
+});
+
 // Xóa thư mục (recursive)
 app.delete("/api/folders", async (req, res) => {
   try {
@@ -542,6 +672,31 @@ app.get("/download/:name", (req, res) => {
     } catch {
       return res.status(404).send("Not found");
     }
+  }
+
+  // Nếu là directory, trả về file nén (ZIP)
+  try {
+    const stats = fs.statSync(filePath);
+    if (stats.isDirectory()) {
+      const displayName = req.query.dl || name;
+      const asciiName = displayName.replace(/[^\x20-\x7E]/g, '_') + '.zip';
+      const utf8Name = encodeURIComponent(displayName + '.zip').replace(/'/g, '%27');
+      
+      res.setHeader("Content-Disposition", `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`);
+      res.setHeader("Content-Type", "application/zip");
+
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      archive.on('error', err => {
+        console.error("Archiver error:", err);
+        if (!res.headersSent) res.status(500).send({error: err.message});
+      });
+      archive.pipe(res);
+      archive.directory(filePath, false);
+      return archive.finalize();
+    }
+  } catch (e) {
+    console.error("Directory stat error:", e);
+    return res.status(500).send("Internal Server Error");
   }
 
   // ── Tên hiển thị: ưu tiên ?dl=..., fallback về tên từ URL ──

@@ -586,6 +586,43 @@
     </div>
   </div>
 
+  <!-- MODAL ĐỔI TÊN -->
+  <div id="rename-modal"
+    class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
+    onclick="if(event.target===this)closeRenameModal()">
+    <div
+      class="bg-white w-full md:w-[400px] md:rounded-3xl rounded-t-3xl pt-6 pb-12 px-6 md:p-8 md:pb-8 flex flex-col modal-slide-up shadow-2xl relative border border-slate-100">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mb-6 md:hidden mx-auto"></div>
+
+      <div class="flex items-center gap-4 mb-6">
+        <div
+          class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 shadow-sm border border-blue-100">
+          <i class="ph-fill ph-pencil-simple text-2xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-800" id="rename-title">Đổi tên</h3>
+          <p class="text-sm text-slate-500 mt-0.5 max-w-[200px] truncate" id="rename-desc">Tên cũ</p>
+        </div>
+      </div>
+
+      <div class="relative group">
+        <i
+          class="ph-fill ph-pencil absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+        <input type="text" id="rename-name" placeholder="Tên mới..."
+          class="w-full bg-slate-50 border border-slate-200 text-slate-800 pl-11 py-3.5 pr-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 font-medium transition-all"
+          onkeyup="if(event.key==='Enter') executeRename()" />
+      </div>
+
+      <div class="flex w-full gap-3 mt-8">
+        <button onclick="closeRenameModal()"
+          class="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 active:scale-95 transition-all outline-none">Hủy</button>
+        <button onclick="executeRename()"
+          class="flex-1 py-3 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-600 active:scale-95 transition-all shadow-lg shadow-blue-500/20 outline-none">Đổi
+          tên</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL NÉN PDF -->
   <div id="compress-pdf-modal"
     class="fixed inset-0 z-[110] hidden flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 p-0 md:p-4"
@@ -909,6 +946,75 @@
         } else {
           const data = await res.json?.() || {};
           showStatus(data.error || 'Lỗi tạo thư mục', 'error');
+        }
+      } catch (e) {
+        showStatus('Lỗi kết nối', 'error');
+      }
+    }
+
+    // Đổi tên
+    let _pendingRename = null; // { oldName, type }
+
+    function promptRename(oldName, type) {
+      _pendingRename = { oldName, type };
+      const modal = $('rename-modal');
+      const input = $('rename-name');
+      $('rename-desc').textContent = oldName;
+      $('rename-title').textContent = type === 'folder' ? 'Đổi tên thư mục' : 'Đổi tên tệp';
+      input.value = oldName;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      requestAnimationFrame(() => modal.classList.remove('opacity-0'));
+      setTimeout(() => {
+        input.focus();
+        if (type === 'file') {
+          const dotIdx = oldName.lastIndexOf('.');
+          if (dotIdx > 0) input.setSelectionRange(0, dotIdx);
+          else input.setSelectionRange(0, oldName.length);
+        } else {
+          input.setSelectionRange(0, oldName.length);
+        }
+      }, 300);
+    }
+
+    function closeRenameModal() {
+      const modal = $('rename-modal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }, 200);
+    }
+
+    async function executeRename() {
+      const input = $('rename-name');
+      const newName = input.value;
+      if (!newName || !newName.trim() || !_pendingRename) {
+        input.focus();
+        return;
+      }
+      const { oldName, type } = _pendingRename;
+      if (newName.trim() === oldName) {
+        closeRenameModal();
+        return;
+      }
+      closeRenameModal();
+
+      showStatus(`Đang đổi tên ${type === 'folder' ? 'thư mục' : 'tệp'}...`, 'loading');
+      try {
+        const res = await safeFetch(type === 'folder' ? '/api/folders' : '/api/files', {
+          method: 'PUT',
+          headers: { ...headers(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldName, newName: newName.trim(), dir: currentDir })
+        });
+        if (res.ok) {
+          showStatus('Đã đổi tên thành công', 'success');
+          lastEtag = null;
+          refresh(true);
+        } else {
+          let data = {};
+          try { data = await res.json(); } catch(e) {}
+          showStatus(data.error || 'Lỗi đổi tên', 'error');
         }
       } catch (e) {
         showStatus('Lỗi kết nối', 'error');
@@ -2137,7 +2243,11 @@
            <div class="w-10 h-10 rounded-2xl bg-white/70 flex items-center justify-center shadow-sm">
               <i class="ph-fill ph-folder text-xl"></i>
            </div>
-           <button class="action-btn w-8 h-8 rounded-full bg-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white" onclick="event.stopPropagation(); openDeleteFolderModal('${encName}', '${folder.name.replace(/'/g, "\\'")}')"><i class="ph-bold ph-trash text-red-500"></i></button>
+           <div class="flex items-center gap-1">
+             <button class="action-btn w-8 h-8 rounded-full bg-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white" onclick="event.stopPropagation(); shareFileLink('${encName}', '${currentDir ? '?dir=' + encodeURIComponent(currentDir) : ''}', true)" title="Chia sẻ thư mục (Tải file ZIP)"><i class="ph-bold ph-share-network text-teal-600"></i></button>
+             <button class="action-btn w-8 h-8 rounded-full bg-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white" onclick="event.stopPropagation(); promptRename('${folder.name.replace(/'/g, "\\'")}', 'folder')" title="Đổi tên thư mục"><i class="ph-bold ph-pencil-simple text-blue-500"></i></button>
+             <button class="action-btn w-8 h-8 rounded-full bg-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white" onclick="event.stopPropagation(); openDeleteFolderModal('${encName}', '${folder.name.replace(/'/g, "\\'")}')" title="Xóa thư mục"><i class="ph-bold ph-trash text-red-500"></i></button>
+           </div>
         </div>
         <div class="mt-auto">
            <h3 class="font-bold text-sm truncate pr-2 text-slate-800 leading-tight">${folder.name}</h3>
@@ -2183,10 +2293,13 @@
             <button class="action-btn w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-teal-600 transition-all" onclick="event.stopPropagation(); shareFileLink('${encName}', '${dirParam}')" title="Chia sẻ link tải">
                <i class="ph-bold ph-share-network"></i>
             </button>
-            <a href="/download/${encName}${dirParam}" download="${fileName}" class="action-btn w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 transition-all" onclick="event.stopPropagation()">
+            <a href="/download/${encName}${dirParam}" download="${fileName}" class="action-btn w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 transition-all" onclick="event.stopPropagation()" title="Tải về">
                <i class="ph-bold ph-download-simple"></i>
             </a>
-            <button class="action-btn w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-red-500 transition-all" onclick="event.stopPropagation(); openDeleteModal('${encName}', '${fileName.replace(/'/g, "\\\\'")}')">
+            <button class="action-btn w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-orange-500 transition-all" onclick="event.stopPropagation(); promptRename('${fileName.replace(/'/g, "\\'")}', 'file')" title="Đổi tên">
+               <i class="ph-bold ph-pencil-simple"></i>
+            </button>
+            <button class="action-btn w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-red-500 transition-all" onclick="event.stopPropagation(); openDeleteModal('${encName}', '${fileName.replace(/'/g, "\\\\'")}')" title="Xóa">
                <i class="ph-bold ph-trash"></i>
             </button>
          </div>
@@ -2938,10 +3051,11 @@
     };
 
     // ─── SHARE FILE LINK ──────────────────────────────────────────────────────
-    window.shareFileLink = function shareFileLink(encName, dirParam) {
+    window.shareFileLink = function shareFileLink(encName, dirParam, isFolder = false) {
       // Tạo link xem trước public – không cần PIN
       // dirParam dạng "?dir=Foo" hoặc ""
-      const url = `${window.location.origin}/share/${encName}${dirParam}`;
+      const typeParam = isFolder ? (dirParam ? '&type=folder' : '?type=folder') : '';
+      const url = `${window.location.origin}/share/${encName}${dirParam}${typeParam}`;
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(url).then(() => {
           showStatus('🔗 Đã sao chép link xem trước!', 'success');

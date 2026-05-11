@@ -295,6 +295,39 @@
             font-size: 14px;
             color: var(--muted);
         }
+
+        /* ─── FOLDER LIST ─── */
+        .folder-list-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 32px;
+            background: #f1f5f9;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .folder-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            border-radius: 16px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid transparent;
+        }
+
+        .folder-item:hover {
+            background: #fff;
+            border-color: #e2e8f0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 
@@ -331,9 +364,9 @@
             <a id="download-btn" href="#" class="btn btn-primary" download>
                 <i class="ph-bold ph-download-simple"></i> Tải về
             </a>
-            <button class="btn btn-ghost" onclick="history.back()">
+            <!-- <button class="btn btn-ghost" onclick="history.back()">
                 <i class="ph-bold ph-arrow-left"></i> Quay lại
-            </button>
+            </button> -->
         </div>
 
         <!-- Preview area -->
@@ -345,7 +378,6 @@
         </div>
     </div>
 
-    <div class="share-footer">Xem trước không yêu cầu đăng nhập · Bấm "Tải về" để lưu tệp</div>
 
     <script>
         // ─── HELPERS ───────────────────────────────────────────────────────────────
@@ -404,38 +436,116 @@
         }
 
         async function init() {
-            if (!fileName) { showError('Thiếu tên tệp', 'Link không hợp lệ.'); return; }
+            if (!fileName) { showError('Thiếu tên hoặc đường dẫn', 'Link không hợp lệ.'); return; }
+
+            const isFolder = params.get('type') === 'folder';
 
             // ── Set download button ──
             const dlBtn = document.getElementById('download-btn');
             dlBtn.href = downloadUrl;
-            dlBtn.download = fileName;
+            dlBtn.download = fileName + (isFolder ? '.zip' : '');
+            if (isFolder) {
+                dlBtn.innerHTML = '<i class="ph-bold ph-file-zip"></i> Tải về (ZIP)';
+            }
 
             // ── Try to fetch file info via HEAD request ──
             let fileSize = null;
-            try {
-                const head = await fetch(downloadUrl, { method: 'HEAD' });
-                if (!head.ok) {
-                    showError('Không tìm thấy tệp', 'Tệp đã bị xóa hoặc link không còn hiệu lực.');
-                    return;
+            if (!isFolder) {
+                try {
+                    const head = await fetch(downloadUrl, { method: 'HEAD' });
+                    if (!head.ok) {
+                        showError('Không tìm thấy tệp', 'Tệp đã bị xóa hoặc link không còn hiệu lực.');
+                        return;
+                    }
+                    const cl = head.headers.get('content-length');
+                    if (cl) fileSize = parseInt(cl, 10);
+                } catch {
+                    // Network error — still try to render
                 }
-                const cl = head.headers.get('content-length');
-                if (cl) fileSize = parseInt(cl, 10);
-            } catch {
-                // Network error — still try to render
             }
 
             // ── Update file info UI ──
-            const cfg = fileTypeOf(fileName);
+            const cfg = isFolder ? { type: 'folder', icon: 'ph-fill ph-folder', bg: '#eff6ff', color: '#3b82f6' } : fileTypeOf(fileName);
             document.getElementById('file-name').textContent = fileName;
-            document.getElementById('file-size').textContent = fileSize != null ? fmt(fileSize) : 'Không rõ dung lượng';
+            document.getElementById('file-size').textContent = isFolder ? 'Thư mục' : (fileSize != null ? fmt(fileSize) : 'Không rõ dung lượng');
 
             const iconWrap = document.getElementById('file-icon-wrap');
             iconWrap.style.background = cfg.bg;
             iconWrap.innerHTML = `<i class="${cfg.icon}" style="color:${cfg.color}"></i>`;
 
             // ── Render preview ──
-            renderPreview(fileName, cfg.type);
+            if (isFolder) {
+                const area = document.getElementById('preview-area');
+                area.style.flexDirection = 'column';
+                area.style.justifyContent = 'flex-start';
+                area.innerHTML = `
+                <div style="width:100%; border-bottom:1px solid var(--border);">
+                  <div class="folder-list-header">
+                    <span>Tên tệp</span>
+                    <span>Kích thước</span>
+                  </div>
+                </div>
+                <div id="folder-contents" style="width:100%; padding: 12px; display:flex; flex-direction:column; gap:4px; flex:1; overflow-y:auto;">
+                   <div class="center-content"><i class="spin ph ph-circle-notch"></i></div>
+                </div>`;
+
+                try {
+                    const shareDir = encodeURIComponent(fileName);
+                    const parentDir = encodeURIComponent(dir);
+                    const listRes = await fetch(`/api/share/folder/${shareDir}?dir=${parentDir}`);
+                    const listData = await listRes.json();
+                    const contentsDiv = document.getElementById('folder-contents');
+                    if (listData.ok) {
+                        if (listData.files.length === 0) {
+                            contentsDiv.innerHTML = `<div class="center-content" style="padding: 40px 20px;">
+                                <i class="ph-fill ph-folder-open" style="font-size:48px;color:#e2e8f0;margin-bottom:8px"></i>
+                                <span style="font-weight:600;color:#94a3b8">Thư mục trống</span>
+                            </div>`;
+                        } else {
+                            let html = '';
+                            const sorted = listData.files.sort((a, b) => {
+                                if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+                                return a.name.localeCompare(b.name);
+                            });
+
+                            for (const f of sorted) {
+                                const fIcon = f.isDir ? 'ph-fill ph-folder' : fileTypeOf(f.name).icon;
+                                const fColor = f.isDir ? '#3b82f6' : fileTypeOf(f.name).color;
+                                const fBg = f.isDir ? '#eff6ff' : fileTypeOf(f.name).bg;
+
+                                const itemDir = dir ? `${dir}/${fileName}` : fileName;
+                                const itemUrl = f.isDir
+                                    ? `/share/${encodeURIComponent(f.name)}?type=folder&dir=${encodeURIComponent(itemDir)}`
+                                    : `/share/${encodeURIComponent(f.name)}?dir=${encodeURIComponent(itemDir)}`;
+
+                                const directDownloadUrl = `/download/${encodeURIComponent(f.name)}?dir=${encodeURIComponent(itemDir)}`;
+
+                                html += `<div class="folder-item" style="padding-right: 8px;">
+                                   <a href="${itemUrl}" style="display:flex; align-items:center; gap:16px; flex:1; min-width:0; text-decoration:none; color:inherit;">
+                                       <div style="width:40px; height:40px; border-radius:12px; background:${fBg}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                           <i class="${fIcon}" style="color:${fColor}; font-size:20px;"></i>
+                                       </div>
+                                       <div style="flex:1; min-width:0; display:flex; align-items:center; justify-content:space-between; padding-right:8px;">
+                                           <div style="font-weight:600; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f.name}</div>
+                                           <div style="font-size:13px; font-weight:500; color:var(--muted); white-space:nowrap; margin-left:16px;">${f.isDir ? 'Thư mục' : fmt(f.size)}</div>
+                                       </div>
+                                   </a>
+                                   <a href="${directDownloadUrl}" download="${f.name}${f.isDir ? '.zip' : ''}" class="btn-ghost" style="padding: 8px 12px; border-radius: 12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; text-decoration:none; gap:6px; color:var(--blue);" title="Tải về" onclick="event.stopPropagation()">
+                                       <i class="ph-bold ph-download-simple" style="font-size: 18px;"></i>
+                                   </a>
+                               </div>`;
+                            }
+                            contentsDiv.innerHTML = html;
+                        }
+                    } else {
+                        contentsDiv.innerHTML = `<div style="text-align:center; color:#ef4444; padding: 20px;">Lỗi: ${listData.error}</div>`;
+                    }
+                } catch (e) {
+                    document.getElementById('folder-contents').innerHTML = `<div style="text-align:center; color:#ef4444; padding: 20px;">Lỗi kết nối khi tải nội dung thư mục</div>`;
+                }
+            } else {
+                renderPreview(fileName, cfg.type);
+            }
         }
 
         function renderPreview(name, type) {
