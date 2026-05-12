@@ -1502,11 +1502,8 @@
 
     // ─── SHARED UPLOAD ────────────────────────────────────────────────────
     async function doUpload(fileList, targetDir, inputEl) {
-      const fd = new FormData();
-      for (const f of fileList) fd.append('files', new File([f], f.name.normalize('NFC'), { type: f.type }));
-
       const dirLabel = targetDir || 'thư mục gốc';
-      showStatus(`Đang tải lên 0%...`, 'progress');
+      showStatus(`Đang chuẩn bị tải lên...`, 'progress');
       updateProgress(0);
 
       try {
@@ -1516,34 +1513,64 @@
         if (targetDir) params.set('dir', targetDir);
         const qs = params.toString();
 
-        const res = await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', `/api/upload${qs ? '?' + qs : ''}`);
-          const hdrs = headers();
-          for (let k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+        const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB per chunk
 
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-              const p = Math.round((e.loaded / e.total) * 100);
-              showStatus(`Đang tải lên: ${p}% (vào ${dirLabel})`, 'progress');
-              updateProgress(p);
-            }
-          };
+        let totalBytes = 0;
+        for (const f of fileList) totalBytes += f.size;
+        let uploadedBytes = 0;
 
-          xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300 });
-          xhr.onerror = () => reject(new Error('Network error'));
-          xhr.send(fd);
-        });
+        for (const f of fileList) {
+          const totalChunks = Math.ceil(f.size / CHUNK_SIZE) || 1; // At least 1 chunk for 0-byte file
+          const fileId = Date.now().toString(36) + Math.random().toString(36).substring(2);
+          const safeName = f.name.normalize('NFC');
 
-        if (!res.ok) showStatus('Lỗi tải lên', 'error');
-        else {
-          showStatus(`Đã tải lên ${fileList.length} file thành công!`, 'success');
-          if (inputEl) inputEl.value = '';
-          lastEtag = null;
-          refresh(true);
+          for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, f.size);
+            const chunk = f.slice(start, end);
+
+            const fd = new FormData();
+            // Pass the original filename so Multer saves it properly
+            fd.append('chunk', chunk, safeName);
+            fd.append('fileId', fileId);
+            fd.append('chunkIndex', i);
+            fd.append('totalChunks', totalChunks);
+            fd.append('fileName', safeName);
+
+            await new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open('POST', `/api/upload/chunk${qs ? '?' + qs : ''}`);
+              const hdrs = headers();
+              for (let k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+
+              xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                  const currentTotal = uploadedBytes + e.loaded;
+                  const p = Math.round((currentTotal / totalBytes) * 100);
+                  showStatus(`Đang tải lên: ${p}% (vào ${dirLabel})`, 'progress');
+                  updateProgress(p);
+                }
+              };
+
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                else reject(new Error('Chunk error: ' + xhr.status));
+              };
+              xhr.onerror = () => reject(new Error('Network error'));
+              xhr.send(fd);
+            });
+
+            uploadedBytes += (end - start);
+          }
         }
+
+        showStatus(`Đã tải lên ${fileList.length} file thành công!`, 'success');
+        if (inputEl) inputEl.value = '';
+        lastEtag = null;
+        refresh(true);
       } catch (e) {
-        showStatus('Mất kết nối', 'error');
+        console.error(e);
+        showStatus('Lỗi tải lên: Mất kết nối hoặc file quá lớn', 'error');
       }
     }
     function uploadToFolder(fileList, targetDir) { return doUpload(fileList, targetDir); }

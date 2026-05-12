@@ -642,6 +642,63 @@ app.post("/api/upload", dynamicUpload, async (req, res) => {
   }
 });
 
+const chunkTmpDir = path.join(UPLOAD_DIR, '.tmp_chunks');
+if (!fs.existsSync(chunkTmpDir)) fs.mkdirSync(chunkTmpDir, { recursive: true });
+const chunkStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, chunkTmpDir),
+  filename: (req, file, cb) => {
+    cb(null, 'chunk-' + Date.now() + '-' + Math.random().toString(36).substring(2));
+  }
+});
+
+app.post("/api/upload/chunk", multer({ storage: chunkStorage }).single('chunk'), async (req, res) => {
+  try {
+    const fileId = req.body.fileId;
+    const chunkIndex = parseInt(req.body.chunkIndex);
+    const totalChunks = parseInt(req.body.totalChunks);
+    const fileName = req.body.fileName;
+    const dir = req.query.dir || '';
+    const targetDir = safeDirPath(dir);
+    if (!targetDir) return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
+    
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+    const chunkPath = req.file.path;
+    const fixedName = tryFixMojibake(fileName).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    const partPath = path.join(targetDir, fileId + '.part');
+
+    const chunkData = await fsPromises.readFile(chunkPath);
+    await fsPromises.appendFile(partPath, chunkData);
+    await fsPromises.unlink(chunkPath);
+
+    if (chunkIndex === totalChunks - 1) {
+      let finalName = fixedName;
+      let targetPath = path.join(targetDir, finalName);
+      
+      const ext = path.extname(finalName);
+      const base = path.basename(finalName, ext);
+      let i = 1;
+      while (fs.existsSync(targetPath)) {
+        finalName = `${base} (${i})${ext}`;
+        targetPath = path.join(targetDir, finalName);
+        i++;
+      }
+      
+      await fsPromises.rename(partPath, targetPath);
+      
+      if (dir !== '__pdf_tmp__') {
+        sseSend("changed", { type: "upload", uploaded: [finalName], dir, at: Date.now() });
+      }
+      return res.json({ ok: true, finalName });
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("Chunk upload error:", e);
+    res.status(500).json({ ok: false, error: "Upload failed" });
+  }
+});
+
 // Chuẩn hoá path để so sánh an toàn trên Windows (case-insensitive, unified sep)
 const UPLOAD_DIR_NORM = path.normalize(UPLOAD_DIR).toLowerCase() + path.sep;
 
