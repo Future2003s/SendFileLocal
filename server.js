@@ -267,8 +267,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({
-  storage,
-  limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB/file
+  storage
 });
 
 // ─── API ROUTES ───────────────────────────────────────────────────────────────
@@ -447,7 +446,7 @@ app.put("/api/folders", async (req, res) => {
 
     const safeOldName = oldName.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
     const safeNewName = newName.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
-    
+
     const parentDir = safeDirPath(dir || '');
     if (!parentDir) return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
 
@@ -455,7 +454,7 @@ app.put("/api/folders", async (req, res) => {
     const newPath = path.join(parentDir, safeNewName);
 
     if (!oldPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase()) ||
-        !newPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+      !newPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
       return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
     }
 
@@ -486,7 +485,7 @@ app.put("/api/files", async (req, res) => {
 
     const safeOldName = oldName.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
     const safeNewName = newName.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
-    
+
     const parentDir = safeDirPath(dir || '');
     if (!parentDir) return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
 
@@ -494,7 +493,7 @@ app.put("/api/files", async (req, res) => {
     const newPath = path.join(parentDir, safeNewName);
 
     if (!oldPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase()) ||
-        !newPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
+      !newPath.toLowerCase().startsWith(path.normalize(UPLOAD_DIR).toLowerCase())) {
       return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
     }
 
@@ -625,7 +624,7 @@ const dynamicUpload = (req, res, next) => {
     }
   });
 
-  multer({ storage: dynamicStorage, limits: { fileSize: 1024 * 1024 * 1024 } })
+  multer({ storage: dynamicStorage })
     .array('files')(req, res, next);
 };
 
@@ -681,14 +680,14 @@ app.get("/download/:name", (req, res) => {
       const displayName = req.query.dl || name;
       const asciiName = displayName.replace(/[^\x20-\x7E]/g, '_') + '.zip';
       const utf8Name = encodeURIComponent(displayName + '.zip').replace(/'/g, '%27');
-      
+
       res.setHeader("Content-Disposition", `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`);
       res.setHeader("Content-Type", "application/zip");
 
-      const archive = archiver('zip', { zlib: { level: 9 } });
+      const archive = archiver('zip', { zlib: { level: 0 } }); // Không nén để tránh timeout khi tải thư mục lớn
       archive.on('error', err => {
         console.error("Archiver error:", err);
-        if (!res.headersSent) res.status(500).send({error: err.message});
+        if (!res.headersSent) res.status(500).send({ error: err.message });
       });
       archive.pipe(res);
       archive.directory(filePath, false);
