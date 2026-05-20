@@ -642,6 +642,14 @@ app.post("/api/upload", dynamicUpload, async (req, res) => {
   }
 });
 
+
+//Nguyên nhân lỗi kẹt 0%: Thuật Toán Chunked Upload
+//do khi deploy (thường là qua Cloudflare hoặc
+//  Nginx có giới hạn mặc định),
+//  nếu bạn đẩy 1 file rất nặng (ví dụ Video 500MB) 
+// lên bằng 1 đường duy nhất, hệ thống trung gian 
+// ở giữa sẽ chặn lại ngay lập tức với lỗi 413 Payload Too Large, 
+// làm cho thanh tiến trình kẹt vĩnh viễn ở 0% và không báo lỗi.
 const chunkTmpDir = path.join(UPLOAD_DIR, '.tmp_chunks');
 if (!fs.existsSync(chunkTmpDir)) fs.mkdirSync(chunkTmpDir, { recursive: true });
 const chunkStorage = multer.diskStorage({
@@ -660,7 +668,7 @@ app.post("/api/upload/chunk", multer({ storage: chunkStorage }).single('chunk'),
     const dir = req.query.dir || '';
     const targetDir = safeDirPath(dir);
     if (!targetDir) return res.status(400).json({ ok: false, error: 'Đường dẫn không hợp lệ' });
-    
+
     if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
     const chunkPath = req.file.path;
@@ -674,7 +682,7 @@ app.post("/api/upload/chunk", multer({ storage: chunkStorage }).single('chunk'),
     if (chunkIndex === totalChunks - 1) {
       let finalName = fixedName;
       let targetPath = path.join(targetDir, finalName);
-      
+
       const ext = path.extname(finalName);
       const base = path.basename(finalName, ext);
       let i = 1;
@@ -683,9 +691,9 @@ app.post("/api/upload/chunk", multer({ storage: chunkStorage }).single('chunk'),
         targetPath = path.join(targetDir, finalName);
         i++;
       }
-      
+
       await fsPromises.rename(partPath, targetPath);
-      
+
       if (dir !== '__pdf_tmp__') {
         sseSend("changed", { type: "upload", uploaded: [finalName], dir, at: Date.now() });
       }

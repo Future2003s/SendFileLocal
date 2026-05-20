@@ -2297,7 +2297,7 @@
 
       div.onclick = (e) => {
         if (e.target.closest('button') || e.target.closest('a')) return;
-        openPreviewModal(encName, fileName);
+        openPreviewModal(encName, fileName, f.size);
       };
 
       div.innerHTML = `
@@ -2434,7 +2434,12 @@
       document.getElementById('preview-body').innerHTML = '';
     };
 
-    window.openPreviewModal = function (encName, fileName) {
+    window.openPreviewModal = function (encName, fileName, fileSize) {
+      if (fileSize === undefined) {
+        const fileObj = currentFiles.find(f => f.name === fileName);
+        if (fileObj) fileSize = fileObj.size;
+      }
+      
       const modal = document.getElementById('preview-modal');
       document.getElementById('preview-title').textContent = fileName;
       const dlBtn = document.getElementById('preview-download-btn');
@@ -2467,8 +2472,16 @@
       } else if (isAudio) {
         body.innerHTML = `<audio src="${path}" controls autoplay class="w-full max-w-md"></audio>`;
       } else if (isPdf || isText) {
-        body.innerHTML = `<iframe src="${path}" class="w-full h-full min-h-[60vh] bg-white rounded-xl shadow-lg border-0"></iframe>`;
+        if (isText && fileSize > 5 * 1024 * 1024) {
+          body.innerHTML = `<div class="text-center p-8"><i class="ph-fill ph-file-text text-6xl text-slate-400 mb-4"></i><p class="font-bold text-slate-700">Tệp quá lớn để xem trước (${fmt(fileSize)})</p><p class="text-sm text-slate-500 mt-2">Vui lòng tải về máy để xem nội dung.</p></div>`;
+        } else {
+          body.innerHTML = `<iframe src="${path}" class="w-full h-full min-h-[60vh] bg-white rounded-xl shadow-lg border-0"></iframe>`;
+        }
       } else if (isOffice) {
+        if (fileSize > 10 * 1024 * 1024) { // Giới hạn 10MB cho Office preview
+          body.innerHTML = `<div class="text-center p-8"><i class="ph-fill ph-file-doc text-6xl text-blue-500 mb-4"></i><p class="font-bold text-slate-700">Tệp quá lớn để xem trước (${fmt(fileSize)})</p><p class="text-sm text-slate-500 mt-2">Việc xem trước tệp lớn có thể gây lỗi hết bộ nhớ (Out of Memory). Vui lòng tải về máy.</p></div>`;
+          return;
+        }
         const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
         if (!isLocalHost) {
           const fullUrl = window.location.origin + path;
@@ -2693,7 +2706,33 @@
         return;
       }
 
-      // Nén ZIP nếu tải nhiều hơn 2 tệp
+      // Kiểm tra tổng dung lượng trước khi nén ZIP bằng client
+      let totalSizeToZip = 0;
+      for (const encName of files) {
+        const decoded = decodeURIComponent(encName);
+        const f = currentFiles.find(x => x.name === decoded);
+        if (f) totalSizeToZip += (f.size || 0);
+      }
+
+      if (totalSizeToZip > 150 * 1024 * 1024) {
+        showStatus('Tổng dung lượng quá lớn, đang tải lần lượt từng tệp...', 'loading');
+        for (const encName of files) {
+          const dirParam = currentDir ? `?dir=${encodeURIComponent(currentDir)}` : '';
+          const a = document.createElement('a');
+          a.href = `/download/${encName}${dirParam}`;
+          a.download = decodeURIComponent(encName);
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          await new Promise(r => setTimeout(r, 800));
+        }
+        selectedFiles.clear();
+        updateSelectionUI();
+        return;
+      }
+
+      // Nén ZIP nếu tải nhiều hơn 2 tệp và tổng dung lượng an toàn (<150MB)
       showStatus(`Đang chuẩn bị nén ${files.length} tệp...`, 'loading');
 
       try {
@@ -2753,6 +2792,18 @@
       }
 
       const files = Array.from(selectedFiles);
+      let totalSizeToZip = 0;
+      for (const encName of files) {
+        const decoded = decodeURIComponent(encName);
+        const f = currentFiles.find(x => x.name === decoded);
+        if (f) totalSizeToZip += (f.size || 0);
+      }
+
+      if (totalSizeToZip > 150 * 1024 * 1024) {
+        showStatus('Dung lượng vượt quá 150MB, không thể nén trên trình duyệt', 'error');
+        return;
+      }
+
       showStatus(`Đang chuẩn bị nén ${files.length} mục...`, 'loading');
 
       try {
